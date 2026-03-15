@@ -142,11 +142,18 @@ Standard SAP EWM OData V4 services are **not active by default** on on-premise s
 
 > Reference: **SAP Note 2948977**
 
-Verify each service is active in the browser:
+Verify each service is active in the browser — all three should return service metadata JSON, not a 404:
+
 ```
-https://YOUR_HOST:44300/sap/opu/odata4/sap/api_whse_storage_bin_2/srvd_a2x/sap/whsestoragebin2/0001/
+# Storage Bins (Tools 1, 3, 4)
+https://YOUR_HOST:44300/sap/opu/odata4/sap/api_whse_storage_bin_2/srvd_a2x/sap/warehousestoragebin/0001/WarehouseStorageBin
+
+# Physical Stock (Tool 2)
+https://YOUR_HOST:44300/sap/opu/odata4/sap/api_whse_physstockprod/srvd_a2x/sap/whsephysicalstockproducts/0001/WarehousePhysicalStockProducts
+
+# Warehouse Task (Tool 5)
+https://YOUR_HOST:44300/sap/opu/odata4/sap/api_warehouse_order_task_2/srvd_a2x/sap/warehouseorder/0001/WarehouseTask
 ```
-Should return service metadata JSON — not a 404 or login loop.
 
 ---
 
