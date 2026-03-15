@@ -219,7 +219,7 @@ Particularly useful when working with RAP, CDS, OData, or anything where you wan
 
 No installation beyond `npx` (included with Node.js). Add alongside your vsp entry in `.mcp.json`.
 
-> Built by [Marian Zeis](https://github.com/marianzeis) — SAP community contribution.
+> Built by [Marian Zeis](https://github.com/marianfoo) — SAP community contribution.
 
 ---
 
