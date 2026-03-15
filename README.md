@@ -13,8 +13,10 @@ The goal: replace transactions like `LX03`, `LS24`, and `LT10` with a single nat
 
 ```
 "Show me all empty bins in warehouse 1710"
-"Where is material PUMP-001 stocked?"
-"Create a transfer order from storage type Y011 to Y020"
+"Where is material EWMS4-03 stocked?"
+"What is the fixed bin assignment for material EWMS4-42?"
+"Assign material EWMS4-03 to bin 052.08 as its fixed storage location"
+"Confirm warehouse task 100000001 in warehouse 1710"
 ```
 
 ---
@@ -71,7 +73,8 @@ sap-ewm-mcp/
 │   │   ├── stockByMaterial.js
 │   │   ├── emptyBins.js
 │   │   ├── binUtilization.js
-│   │   └── transferOrder.js
+│   │   ├── confirmWarehouseTask.js
+│   │   └── fixedBinAssignment.js
 │   └── lib/
 │       └── s4hClient.js    ← shared S/4HANA HTTP client (OData + CSRF)
 │
@@ -138,7 +141,8 @@ Standard SAP EWM OData V4 services are **not active by default** on on-premise s
 |---|---|
 | `API_WHSE_STORAGE_BIN_2` | Storage bin status, empty bins, utilization |
 | `API_WHSE_PHYSSTOCKPROD` | Physical stock by material |
-| `API_WAREHOUSE_ORDER_TASK_2` | Create transfer orders (write) |
+| `API_WAREHOUSE_ORDER_TASK_2` | Confirm warehouse tasks (bound action) |
+| `API_WHSE_FIXBIN_ASSGNMNT` | Fixed bin assignments — read and create |
 
 > Reference: **SAP Note 2948977**
 
@@ -255,18 +259,20 @@ Once `.mcp.json` is in place, Claude Code picks up the MCP servers automatically
 
 ---
 
-## EWM Tools — Roadmap
+## EWM Tools
 
-| # | Tool | API | Status |
-|---|---|---|---|
-| 1 | `get_bin_status` | `API_WHSE_STORAGE_BIN_2` | ✅ Week 01 |
-| 2 | `get_stock_for_material` | `API_WHSE_PHYSSTOCKPROD` | ✅ Week 01 |
-| 3 | `find_empty_bins` | `API_WHSE_STORAGE_BIN_2` | ✅ Week 01 |
-| 4 | `get_bin_utilization` | `API_WHSE_STORAGE_BIN_2` | ✅ Week 01 |
-| 5 | `create_transfer_order` | `API_WAREHOUSE_ORDER_TASK_2` | ✅ Week 01 |
+| # | Tool | API | Type | Status |
+|---|---|---|---|---|
+| 1 | `get_bin_status` | `API_WHSE_STORAGE_BIN_2` | Read | ✅ Live |
+| 2 | `get_stock_for_material` | `API_WHSE_PHYSSTOCKPROD` | Read | ✅ Live |
+| 3 | `find_empty_bins` | `API_WHSE_STORAGE_BIN_2` | Read | ✅ Live |
+| 4 | `get_bin_utilization` | Both above | Read | ✅ Live |
+| 5 | `confirm_warehouse_task` | `API_WAREHOUSE_ORDER_TASK_2` | Write (bound action) | ⏳ Built |
+| 6 | `get_fixed_bin_assignments` | `API_WHSE_FIXBIN_ASSGNMNT` | Read | ✅ Live |
+| 7 | `assign_fixed_bin` | `API_WHSE_FIXBIN_ASSGNMNT` | Write (POST) | ⏳ Built |
 
-Tools 1–4 are read-only OData GET requests.
-Tool 5 is a write operation — requires CSRF token fetch before POST.
+Tools 1–4 and 6 are read-only OData GET requests — verified live against warehouse 1710.
+Tool 5 uses a bound OData action. Tools 7 is a POST — both require CSRF token fetch first.
 
 ---
 
@@ -274,8 +280,9 @@ Tool 5 is a write operation — requires CSRF token fetch before POST.
 
 - [x] Project scaffold and architecture design
 - [x] `.env` + `.mcp.json` wired up with vibing-steampunk
-- [x] All 5 EWM tools built (`binStatus`, `stockByMaterial`, `emptyBins`, `binUtilization`, `transferOrder`)
+- [x] 7 EWM tools built and registered (tools 1–4, 6 verified live; tools 5, 7 built and pending write test)
 - [x] MCP server starts and tools registered (stdio transport)
+- [x] Fixed bin assignment API discovered and added (Tools 6+7) — first full CRUD write tool
 - [x] API availability checked — system reachable, BASIS activation pending
 
 ---
