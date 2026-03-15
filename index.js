@@ -7,7 +7,7 @@ import { getBinStatus } from './tools/binStatus.js';
 import { getStockForMaterial } from './tools/stockByMaterial.js';
 import { findEmptyBins } from './tools/emptyBins.js';
 import { getBinUtilization } from './tools/binUtilization.js';
-import { createTransferOrder } from './tools/transferOrder.js';
+import { confirmWarehouseTask } from './tools/confirmWarehouseTask.js';
 
 const server = new McpServer({ name: 'sap-ewm-mcp', version: '0.1.0' });
 
@@ -88,21 +88,18 @@ server.tool(
   }
 );
 
-// Tool 5 — create_transfer_order
+// Tool 5 — confirm_warehouse_task
 server.tool(
-  'create_transfer_order',
-  'Create a warehouse transfer order (task) in EWM to move stock from one bin to another',
+  'confirm_warehouse_task',
+  'Confirm a warehouse task as completed in EWM using the ConfirmWarehouseTaskExact bound action',
   {
     warehouse: z.string().describe('Warehouse number e.g. 1710'),
-    sourceBin: z.string().describe('Source storage bin'),
-    destinationBin: z.string().describe('Destination storage bin'),
-    product: z.string().describe('Material/Product number'),
-    quantity: z.number().describe('Quantity to transfer'),
-    unit: z.string().describe('Base unit of measure e.g. EA, KG')
+    warehouseTask: z.string().describe('Warehouse task number e.g. 100000001'),
+    warehouseTaskItem: z.string().optional().default('0').describe('Warehouse task item — defaults to 0')
   },
   async (params) => {
     try {
-      const result = await createTransferOrder(params);
+      const result = await confirmWarehouseTask(params);
       return { content: [{ type: 'text', text: JSON.stringify(result, null, 2) }] };
     } catch (err) {
       return { content: [{ type: 'text', text: `Error: ${err.message}` }], isError: true };
