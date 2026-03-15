@@ -8,6 +8,7 @@ import { getStockForMaterial } from './tools/stockByMaterial.js';
 import { findEmptyBins } from './tools/emptyBins.js';
 import { getBinUtilization } from './tools/binUtilization.js';
 import { confirmWarehouseTask } from './tools/confirmWarehouseTask.js';
+import { getFixedBinAssignments, assignFixedBin } from './tools/fixedBinAssignment.js';
 
 const server = new McpServer({ name: 'sap-ewm-mcp', version: '0.1.0' });
 
@@ -100,6 +101,47 @@ server.tool(
   async (params) => {
     try {
       const result = await confirmWarehouseTask(params);
+      return { content: [{ type: 'text', text: JSON.stringify(result, null, 2) }] };
+    } catch (err) {
+      return { content: [{ type: 'text', text: `Error: ${err.message}` }], isError: true };
+    }
+  }
+);
+
+// Tool 6 — get_fixed_bin_assignments
+server.tool(
+  'get_fixed_bin_assignments',
+  'Get fixed bin assignments in EWM — which materials are permanently assigned to which bins',
+  {
+    warehouse: z.string().describe('Warehouse number e.g. 1710'),
+    product: z.string().optional().describe('Filter by material/product number'),
+    storageBin: z.string().optional().describe('Filter by storage bin'),
+    top: z.number().optional().default(20).describe('Max records to return')
+  },
+  async (params) => {
+    try {
+      const result = await getFixedBinAssignments(params);
+      return { content: [{ type: 'text', text: JSON.stringify(result, null, 2) }] };
+    } catch (err) {
+      return { content: [{ type: 'text', text: `Error: ${err.message}` }], isError: true };
+    }
+  }
+);
+
+// Tool 7 — assign_fixed_bin
+server.tool(
+  'assign_fixed_bin',
+  'Assign a material to a fixed storage bin in EWM — master data write operation',
+  {
+    warehouse: z.string().describe('Warehouse number e.g. 1710'),
+    storageBin: z.string().describe('Storage bin to assign as fixed bin e.g. 052.08'),
+    product: z.string().describe('Material/product number e.g. EWMS4-42'),
+    owner: z.string().describe('Entitled to dispose party / stock owner e.g. BP1710'),
+    storageType: z.string().optional().describe('Storage type e.g. Y052')
+  },
+  async (params) => {
+    try {
+      const result = await assignFixedBin(params);
       return { content: [{ type: 'text', text: JSON.stringify(result, null, 2) }] };
     } catch (err) {
       return { content: [{ type: 'text', text: `Error: ${err.message}` }], isError: true };
