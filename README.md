@@ -136,7 +136,7 @@ Standard SAP EWM OData V4 services are **not active by default** on on-premise s
 
 | Service Group | Used for |
 |---|---|
-| `API_WHSE_STORAGEBIN` | Storage bin status, empty bins, utilization |
+| `API_WHSE_STORAGE_BIN_2` | Storage bin status, empty bins, utilization |
 | `API_WHSE_PHYSSTOCKPROD` | Physical stock by material |
 | `API_WAREHOUSE_ORDER_TASK_2` | Create transfer orders (write) |
 
@@ -144,7 +144,7 @@ Standard SAP EWM OData V4 services are **not active by default** on on-premise s
 
 Verify each service is active in the browser:
 ```
-https://YOUR_HOST:44300/sap/opu/odata4/sap/api_whse_storagebin/srvd_a2x/sap/whsestoragebin/0001/
+https://YOUR_HOST:44300/sap/opu/odata4/sap/api_whse_storage_bin_2/srvd_a2x/sap/whsestoragebin2/0001/
 ```
 Should return service metadata JSON — not a 404 or login loop.
 
@@ -252,10 +252,10 @@ Once `.mcp.json` is in place, Claude Code picks up the MCP servers automatically
 
 | # | Tool | API | Status |
 |---|---|---|---|
-| 1 | `get_bin_status` | `API_WHSE_STORAGEBIN` | ✅ Week 01 |
+| 1 | `get_bin_status` | `API_WHSE_STORAGE_BIN_2` | ✅ Week 01 |
 | 2 | `get_stock_for_material` | `API_WHSE_PHYSSTOCKPROD` | ✅ Week 01 |
-| 3 | `find_empty_bins` | `API_WHSE_STORAGEBIN` | ✅ Week 01 |
-| 4 | `get_bin_utilization` | `API_WHSE_STORAGEBIN` | ✅ Week 01 |
+| 3 | `find_empty_bins` | `API_WHSE_STORAGE_BIN_2` | ✅ Week 01 |
+| 4 | `get_bin_utilization` | `API_WHSE_STORAGE_BIN_2` | ✅ Week 01 |
 | 5 | `create_transfer_order` | `API_WAREHOUSE_ORDER_TASK_2` | ✅ Week 01 |
 
 Tools 1–4 are read-only OData GET requests.

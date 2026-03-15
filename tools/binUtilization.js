@@ -1,6 +1,8 @@
 import { s4hGet } from '../lib/s4hClient.js';
 
-const BIN_BASE = `/sap/opu/odata4/sap/api_whse_storagebin/srvd_a2x/sap/whsestoragebin/0001/StorageBin`;
+// ⚠️ Verify service path in browser before first use:
+// https://<host>/sap/opu/odata4/sap/api_whse_storage_bin_2/srvd_a2x/sap/whsestoragebin2/0001/
+const BIN_BASE = `/sap/opu/odata4/sap/api_whse_storage_bin_2/srvd_a2x/sap/whsestoragebin2/0001/StorageBin`;
 const STOCK_BASE = `/sap/opu/odata4/sap/api_whse_physstockprod/srvd_a2x/sap/whsephysicalstockproducts/0001/WarehousePhysicalStockProducts`;
 
 export async function getBinUtilization({ warehouse, storageType, top = 100 }) {

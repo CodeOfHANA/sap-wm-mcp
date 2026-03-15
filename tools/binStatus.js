@@ -1,6 +1,8 @@
 import { s4hGet } from '../lib/s4hClient.js';
 
-const BASE = `/sap/opu/odata4/sap/api_whse_storagebin/srvd_a2x/sap/whsestoragebin/0001/StorageBin`;
+// ⚠️ Verify service path in browser before first use:
+// https://<host>/sap/opu/odata4/sap/api_whse_storage_bin_2/srvd_a2x/sap/whsestoragebin2/0001/
+const BASE = `/sap/opu/odata4/sap/api_whse_storage_bin_2/srvd_a2x/sap/whsestoragebin2/0001/StorageBin`;
 
 export async function getBinStatus({ warehouse, storageType, emptyOnly, top = 20 }) {
   const filters = [`EWMWarehouse eq '${warehouse}'`];
