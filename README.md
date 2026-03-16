@@ -65,29 +65,26 @@ sap-ewm-mcp/
 ├── .env.example            ← copy to .env and fill in your credentials
 ├── .gitignore
 ├── package.json
+├── index.js                ← MCP server entry point, all 7 tools registered
 │
-├── src/                    ← all source code (Week 02+)
-│   ├── index.js            ← MCP server entry point, transport setup
-│   ├── tools/              ← one file per EWM tool
-│   │   ├── binStatus.js
-│   │   ├── stockByMaterial.js
-│   │   ├── emptyBins.js
-│   │   ├── binUtilization.js
-│   │   ├── confirmWarehouseTask.js
-│   │   └── fixedBinAssignment.js
-│   └── lib/
-│       └── s4hClient.js    ← shared S/4HANA HTTP client (OData + CSRF)
+├── tools/                  ← one file per EWM tool
+│   ├── binStatus.js           ← get_bin_status
+│   ├── stockByMaterial.js     ← get_stock_for_material
+│   ├── emptyBins.js           ← find_empty_bins
+│   ├── binUtilization.js      ← get_bin_utilization
+│   ├── confirmWarehouseTask.js ← confirm_warehouse_task
+│   └── fixedBinAssignment.js  ← get_fixed_bin_assignments + assign_fixed_bin
+│
+├── lib/
+│   └── s4hClient.js        ← shared S/4HANA HTTP client (OData GET + CSRF-aware POST)
 │
 ├── deploy/                 ← deployment manifests (Phase 2+)
 │   └── phase2-btp/
 │       ├── manifest.yml    ← CF push config
 │       └── xs-security.json
 │
-├── docs/                   ← architecture diagrams, API references
-│   └── architecture.md
-│
 └── scripts/
-    └── run-vsp.sh          ← vibing-steampunk ABAP MCP wrapper
+    └── run-vsp.sh          ← vibing-steampunk ABAP MCP wrapper (optional)
 ```
 
 > **Milestones** are tracked via git tags (`v0.1.0-week01`, `v1.0.0-phase1`) and documented in [CHANGELOG.md](./CHANGELOG.md). No week-N folders — the commit history and tags are the build journal.
@@ -146,7 +143,7 @@ Standard SAP EWM OData V4 services are **not active by default** on on-premise s
 
 > Reference: **SAP Note 2948977**
 
-Verify each service is active in the browser — all three should return service metadata JSON, not a 404:
+Verify each service is active in the browser — all four should return service metadata JSON, not a 404:
 
 ```
 # Storage Bins (Tools 1, 3, 4)
@@ -157,6 +154,9 @@ https://YOUR_HOST:44300/sap/opu/odata4/sap/api_whse_physstockprod/srvd_a2x/sap/w
 
 # Warehouse Task (Tool 5)
 https://YOUR_HOST:44300/sap/opu/odata4/sap/api_warehouse_order_task_2/srvd_a2x/sap/warehouseorder/0001/WarehouseTask
+
+# Fixed Bin Assignment (Tools 6, 7)
+https://YOUR_HOST:44300/sap/opu/odata4/sap/api_whse_fixbin_assgnmnt/srvd_a2x/sap/whsefixedbinassignment/0001/WarehouseFixedBinAssignment
 ```
 
 ---
@@ -165,9 +165,9 @@ https://YOUR_HOST:44300/sap/opu/odata4/sap/api_warehouse_order_task_2/srvd_a2x/s
 
 Two MCP servers are used together — one for live system access, one for ABAP knowledge.
 
-#### 4a. vibing-steampunk (vsp) — required
+#### 4a. vibing-steampunk (vsp) — optional
 
-Gives Claude Code live read/write/activate access to the S/4HANA system. This is what lets you create objects, run classes, and inspect the system directly from the conversation.
+Gives Claude Code live read/write/activate access to the S/4HANA ABAP system. Useful during development for creating objects, running classes, and inspecting the system directly from the conversation. **Not required to run the EWM MCP server** — the server makes its own direct OData calls and works completely independently.
 
 **Install vsp:**
 ```bash
@@ -267,23 +267,25 @@ Once `.mcp.json` is in place, Claude Code picks up the MCP servers automatically
 | 2 | `get_stock_for_material` | `API_WHSE_PHYSSTOCKPROD` | Read | ✅ Live |
 | 3 | `find_empty_bins` | `API_WHSE_STORAGE_BIN_2` | Read | ✅ Live |
 | 4 | `get_bin_utilization` | Both above | Read | ✅ Live |
-| 5 | `confirm_warehouse_task` | `API_WAREHOUSE_ORDER_TASK_2` | Write (bound action) | ⏳ Built |
+| 5 | `confirm_warehouse_task` | `API_WAREHOUSE_ORDER_TASK_2` | Write (bound action) | ✅ Live |
 | 6 | `get_fixed_bin_assignments` | `API_WHSE_FIXBIN_ASSGNMNT` | Read | ✅ Live |
-| 7 | `assign_fixed_bin` | `API_WHSE_FIXBIN_ASSGNMNT` | Write (POST) | ⏳ Built |
+| 7 | `assign_fixed_bin` | `API_WHSE_FIXBIN_ASSGNMNT` | Write (POST) | ✅ Live |
 
-Tools 1–4 and 6 are read-only OData GET requests — verified live against warehouse 1710.
-Tool 5 uses a bound OData action. Tools 7 is a POST — both require CSRF token fetch first.
+All 7 tools verified live against S/4HANA EWM warehouse 1710.
+Write tools (5, 7) use CSRF token fetch + session cookie forwarding. Tool 5 additionally fetches the ETag and passes `If-Match` as required by the bound action.
 
 ---
 
 ## Week 01 — What Was Built
 
 - [x] Project scaffold and architecture design
-- [x] `.env` + `.mcp.json` wired up with vibing-steampunk
-- [x] 7 EWM tools built and registered (tools 1–4, 6 verified live; tools 5, 7 built and pending write test)
-- [x] MCP server starts and tools registered (stdio transport)
-- [x] Fixed bin assignment API discovered and added (Tools 6+7) — first full CRUD write tool
-- [x] API availability checked — system reachable, BASIS activation pending
+- [x] `.env` + `.mcp.json` configured, server starts clean
+- [x] All 4 SAP OData V4 service groups published and verified live
+- [x] 7 EWM tools built, registered, and verified against warehouse 1710
+- [x] Read tools (1–4, 6) — OData GET, live data confirmed
+- [x] Write tools (5, 7) — CSRF token fetch + session cookie forwarding + ETag/If-Match implemented and verified
+- [x] Fixed bin assignment (Tools 6+7) — full CRUD, first write to master data confirmed live
+- [x] MCP server works standalone — no dependency on vibing-steampunk or any other MCP server
 
 ---
 
