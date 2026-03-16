@@ -1,0 +1,19 @@
+# Development only
+.env
+.env.example
+.mcp.json
+CLAUDE.md
+
+# Test scripts
+test-tools.mjs
+test-writes.mjs
+
+# Docs and carousel (not needed at runtime)
+docs/
+scripts/
+
+# Deploy manifests
+deploy/
+
+# Dev dependencies artifacts
+node_modules/

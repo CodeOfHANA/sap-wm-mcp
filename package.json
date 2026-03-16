@@ -1,10 +1,36 @@
 {
   "name": "sap-ewm-mcp",
   "version": "0.1.0",
+  "description": "MCP server for SAP Extended Warehouse Management — connects AI agents to S/4HANA EWM using standard OData V4 APIs. Works with Claude Desktop, Claude Code, and any MCP-compatible client.",
   "type": "module",
   "main": "index.js",
+  "bin": {
+    "sap-ewm-mcp": "index.js"
+  },
   "scripts": {
     "start": "node index.js"
+  },
+  "keywords": [
+    "sap",
+    "ewm",
+    "mcp",
+    "model-context-protocol",
+    "s4hana",
+    "warehouse",
+    "odata",
+    "claude",
+    "ai-agents",
+    "btp"
+  ],
+  "author": "Noman Mohamed Hanif <noman@relacon.de> (https://github.com/CodeOfHANA)",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/CodeOfHANA/sap-ewm-mcp.git"
+  },
+  "homepage": "https://github.com/CodeOfHANA/sap-ewm-mcp#readme",
+  "engines": {
+    "node": ">=20"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.27.1",
