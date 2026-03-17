@@ -8,19 +8,20 @@ import { getBinStatus } from './tools/binStatus.js';
 import { getStockForMaterial } from './tools/stockByMaterial.js';
 import { findEmptyBins } from './tools/emptyBins.js';
 import { getBinUtilization } from './tools/binUtilization.js';
-import { confirmWarehouseTask } from './tools/confirmWarehouseTask.js';
-import { getFixedBinAssignments, assignFixedBin } from './tools/fixedBinAssignment.js';
+import { createTransferOrder } from './tools/createTransferOrder.js';
+import { confirmTransferOrder } from './tools/confirmTransferOrder.js';
+import { confirmTransferOrderSU } from './tools/confirmTransferOrderSU.js';
 
-const server = new McpServer({ name: 'sap-ewm-mcp', version: '0.1.0' });
+const server = new McpServer({ name: 'sap-wm-mcp', version: '0.1.0' });
 
 // Tool 1 — get_bin_status
 server.tool(
   'get_bin_status',
-  'Query EWM storage bins from S/4HANA by warehouse, storage type, empty/blocked status',
+  'Query classic WM storage bins from S/4HANA by warehouse, storage type, or specific bin — returns empty/blocked status and capacity',
   {
-    warehouse: z.string().describe('Warehouse number e.g. 1710'),
-    storageType: z.string().optional().describe('Storage type e.g. Y011'),
-    emptyOnly: z.boolean().optional().describe('Return only empty bins'),
+    warehouse: z.string().describe('Warehouse number e.g. 102'),
+    storageType: z.string().optional().describe('Storage type e.g. 001'),
+    bin: z.string().optional().describe('Specific bin number e.g. 01-01-01'),
     top: z.number().optional().default(20).describe('Max records to return')
   },
   async (params) => {
@@ -36,10 +37,11 @@ server.tool(
 // Tool 2 — get_stock_for_material
 server.tool(
   'get_stock_for_material',
-  'Get physical warehouse stock for a specific material/product in S/4HANA EWM',
+  'Get physical warehouse stock for a material in classic WM — shows which bins hold the material and how much',
   {
-    warehouse: z.string().describe('Warehouse number e.g. 1710'),
-    material: z.string().optional().describe('Material/Product number e.g. MZ-FG-M500'),
+    warehouse: z.string().describe('Warehouse number e.g. 102'),
+    material: z.string().optional().describe('Material number e.g. TG0001'),
+    storageType: z.string().optional().describe('Filter by storage type'),
     top: z.number().optional().default(20).describe('Max records to return')
   },
   async (params) => {
@@ -55,10 +57,10 @@ server.tool(
 // Tool 3 — find_empty_bins
 server.tool(
   'find_empty_bins',
-  'Find all empty storage bins in an EWM warehouse, optionally filtered by storage type',
+  'Find all empty storage bins in a classic WM warehouse, optionally filtered by storage type',
   {
-    warehouse: z.string().describe('Warehouse number e.g. 1710'),
-    storageType: z.string().optional().describe('Storage type to filter e.g. Y011'),
+    warehouse: z.string().describe('Warehouse number e.g. 102'),
+    storageType: z.string().optional().describe('Storage type to filter e.g. 001'),
     top: z.number().optional().default(50).describe('Max records to return')
   },
   async (params) => {
@@ -74,9 +76,9 @@ server.tool(
 // Tool 4 — get_bin_utilization
 server.tool(
   'get_bin_utilization',
-  'Get warehouse bin utilization stats — occupied vs empty vs blocked, and stock by storage type',
+  'Get warehouse bin utilization stats for classic WM — occupied vs empty vs blocked, grouped by storage type',
   {
-    warehouse: z.string().describe('Warehouse number e.g. 1710'),
+    warehouse: z.string().describe('Warehouse number e.g. 102'),
     storageType: z.string().optional().describe('Filter by storage type'),
     top: z.number().optional().default(100).describe('Max bins to analyze')
   },
@@ -90,18 +92,25 @@ server.tool(
   }
 );
 
-// Tool 5 — confirm_warehouse_task
+// Tool 5 — create_transfer_order
 server.tool(
-  'confirm_warehouse_task',
-  'Confirm a warehouse task as completed in EWM using the ConfirmWarehouseTaskExact bound action',
+  'create_transfer_order',
+  'Create a classic WM Transfer Order in S/4HANA — moves stock from source bin to destination bin via L_TO_CREATE_SINGLE',
   {
-    warehouse: z.string().describe('Warehouse number e.g. 1710'),
-    warehouseTask: z.string().describe('Warehouse task number e.g. 100000001'),
-    warehouseTaskItem: z.string().optional().default('0').describe('Warehouse task item — defaults to 0')
+    warehouse:      z.string().describe('Warehouse number e.g. 102'),
+    movementType:   z.string().describe('WM movement type e.g. 999'),
+    material:       z.string().describe('Material number e.g. TG0001'),
+    plant:          z.string().describe('Plant e.g. 1710'),
+    quantity:       z.number().describe('Quantity to move'),
+    unitOfMeasure:  z.string().describe('Unit of measure e.g. ST, KG'),
+    sourceType:     z.string().optional().default('').describe('Source storage type (blank = use suggested)'),
+    sourceBin:      z.string().optional().default('').describe('Source bin (blank = system picks)'),
+    destType:       z.string().describe('Destination storage type e.g. 001'),
+    destBin:        z.string().describe('Destination bin e.g. 01-01-01')
   },
   async (params) => {
     try {
-      const result = await confirmWarehouseTask(params);
+      const result = await createTransferOrder(params);
       return { content: [{ type: 'text', text: JSON.stringify(result, null, 2) }] };
     } catch (err) {
       return { content: [{ type: 'text', text: `Error: ${err.message}` }], isError: true };
@@ -109,19 +118,17 @@ server.tool(
   }
 );
 
-// Tool 6 — get_fixed_bin_assignments
+// Tool 6 — confirm_transfer_order
 server.tool(
-  'get_fixed_bin_assignments',
-  'Get fixed bin assignments in EWM — which materials are permanently assigned to which bins',
+  'confirm_transfer_order',
+  'Confirm a classic WM Transfer Order in S/4HANA — marks the TO as executed via L_TO_CONFIRM',
   {
-    warehouse: z.string().describe('Warehouse number e.g. 1710'),
-    product: z.string().optional().describe('Filter by material/product number'),
-    storageBin: z.string().optional().describe('Filter by storage bin'),
-    top: z.number().optional().default(20).describe('Max records to return')
+    warehouse:           z.string().describe('Warehouse number e.g. 102'),
+    transferOrderNumber: z.string().describe('Transfer order number e.g. 0000000123')
   },
   async (params) => {
     try {
-      const result = await getFixedBinAssignments(params);
+      const result = await confirmTransferOrder(params);
       return { content: [{ type: 'text', text: JSON.stringify(result, null, 2) }] };
     } catch (err) {
       return { content: [{ type: 'text', text: `Error: ${err.message}` }], isError: true };
@@ -129,20 +136,17 @@ server.tool(
   }
 );
 
-// Tool 7 — assign_fixed_bin
+// Tool 7 — confirm_transfer_order_su
 server.tool(
-  'assign_fixed_bin',
-  'Assign a material to a fixed storage bin in EWM — master data write operation',
+  'confirm_transfer_order_su',
+  'Confirm all open transfer orders on a classic WM storage unit — uses L_TO_CONFIRM_SU to confirm by SU number instead of individual TO number',
   {
-    warehouse: z.string().describe('Warehouse number e.g. 1710'),
-    storageBin: z.string().describe('Storage bin to assign as fixed bin e.g. 052.08'),
-    product: z.string().describe('Material/product number e.g. EWMS4-42'),
-    owner: z.string().describe('Entitled to dispose party / stock owner e.g. BP1710'),
-    storageType: z.string().optional().describe('Storage type e.g. Y052')
+    warehouse:   z.string().describe('Warehouse number e.g. 102'),
+    storageUnit: z.string().describe('Storage unit number (LENUM) e.g. 000000001234567890')
   },
   async (params) => {
     try {
-      const result = await assignFixedBin(params);
+      const result = await confirmTransferOrderSU(params);
       return { content: [{ type: 'text', text: JSON.stringify(result, null, 2) }] };
     } catch (err) {
       return { content: [{ type: 'text', text: `Error: ${err.message}` }], isError: true };
@@ -152,4 +156,4 @@ server.tool(
 
 const transport = new StdioServerTransport();
 await server.connect(transport);
-console.error('SAP EWM MCP Server running (stdio)...');
+console.error('SAP WM MCP Server running (stdio)...');

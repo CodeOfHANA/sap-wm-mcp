@@ -1,0 +1,6 @@
+@EndUserText.label: 'WM MCP Service Definition'
+define service ZSD_WMMcpService {
+  expose ZC_WMStoragBin      as WMStorageBin;
+  expose ZC_WMWarehouseStock as WMWarehouseStock;
+  expose ZR_WMTransferOrder  as WMTransferOrder;
+}
