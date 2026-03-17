@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<asx:abap xmlns:asx="http://www.sap.com/abapxml" version="1.0">
+ <asx:values>
+  <DATA>
+   <MASTER_LANGUAGE>E</MASTER_LANGUAGE>
+   <STARTING_FOLDER>/abap/src/</STARTING_FOLDER>
+   <FOLDER_LOGIC>FLAT</FOLDER_LOGIC>
+   <IGNORE>
+    <item>/.abapgit.xml</item>
+    <item>/index.js</item>
+    <item>/package.json</item>
+    <item>/package-lock.json</item>
+    <item>/.env</item>
+    <item>/.env.example</item>
+    <item>/.mcp.json</item>
+    <item>/README.md</item>
+    <item>/CHANGELOG.md</item>
+    <item>/ROADMAP.md</item>
+    <item>/CLAUDE.md</item>
+   </IGNORE>
+  </DATA>
+ </asx:values>
+</asx:abap>
