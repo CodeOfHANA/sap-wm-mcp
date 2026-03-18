@@ -22,6 +22,10 @@ Connect AI agents — Claude, Copilot, or any MCP-compatible client — directly
 - [Quick Start](#quick-start)
 - [Configuration](#configuration)
 - [MCP Client Setup](#mcp-client-setup)
+  - [Option A — npx (Claude Desktop, Claude Code, Cursor)](#option-a--npx-recommended)
+  - [Option B — Clone locally](#option-b--clone-locally-for-developers)
+  - [Verify it's working](#verify-its-working)
+  - [Example conversations](#example-conversations)
 - [Tools Reference](#tools-reference)
 - [ABAP Service Installation](#abap-service-installation)
 - [Custom RAP Service — Architecture](#custom-rap-service--architecture)
@@ -70,34 +74,25 @@ Unlike EWM, classic WM has no standard OData APIs. This package ships a complete
 
 ## Quick Start
 
-### Step 1 — Install the ABAP service
+### Step 1 — Install the ABAP service (one-time per SAP system)
 
-See [ABAP Service Installation](#abap-service-installation). This is a one-time step per SAP system.
+The MCP server calls a custom RAP OData V4 service that must exist in your SAP system. Install it via abapGit — no transport file, no BASIS involvement. See [ABAP Service Installation](#abap-service-installation).
 
-### Step 2 — Create your `.env` file
+### Step 2 — Configure your MCP client
 
-```env
-SAP_URL=https://your-sap-host:44300
-SAP_CLIENT=100
-SAP_USER=YOUR_USER
-SAP_PASSWORD=YOUR_PASSWORD
-SAP_INSECURE=true
+Add the server to your MCP client config with your SAP credentials inline. See [MCP Client Setup](#mcp-client-setup) for Claude Desktop, Claude Code, and Cursor.
+
+No separate install or `.env` file needed — credentials go directly in the config.
+
+### Step 3 — Ask Claude a warehouse question
+
+```
+"Show me all empty bins in warehouse 102"
+"Where is material TG0001 stored?"
+"What is the utilization of warehouse 102?"
 ```
 
-> `SAP_INSECURE=true` disables TLS certificate validation — required for most on-premise systems with self-signed certificates.
-
-### Step 3 — Run
-
-```bash
-# No install required
-npx sap-wm-mcp
-
-# Or install globally
-npm install -g sap-wm-mcp
-sap-wm-mcp
-```
-
-The server starts in stdio mode, ready to accept MCP connections.
+Claude calls the WM tools automatically. No transaction codes, no GUI.
 
 ---
 
@@ -117,9 +112,29 @@ The `.env` file is loaded from the **current working directory** when the server
 
 ## MCP Client Setup
 
-### Claude Desktop
+Two installation options — choose based on your use case.
 
-Add to `claude_desktop_config.json`:
+| Option | When to use |
+|---|---|
+| **A — npx (recommended)** | Just want to use it. No cloning, no install step. Credentials go inline in the config. |
+| **B — Clone locally** | Want to modify tools, extend the service, or contribute. |
+
+---
+
+### Option A — npx (recommended)
+
+No cloning or install required. Credentials are passed as environment variables directly in your MCP client config — no `.env` file needed.
+
+#### Claude Desktop
+
+**Step 1 — Find your config file:**
+
+| OS | Path |
+|---|---|
+| Windows | `%APPDATA%\Claude\claude_desktop_config.json` |
+| macOS | `~/Library/Application Support/Claude/claude_desktop_config.json` |
+
+**Step 2 — Add the server entry:**
 
 ```json
 {
@@ -127,19 +142,29 @@ Add to `claude_desktop_config.json`:
     "sap-wm-mcp": {
       "command": "npx",
       "args": ["sap-wm-mcp"],
-      "cwd": "/path/to/folder/with/.env"
+      "env": {
+        "SAP_URL": "https://your-sap-host:44300",
+        "SAP_CLIENT": "100",
+        "SAP_USER": "your-user",
+        "SAP_PASSWORD": "your-password",
+        "SAP_INSECURE": "true"
+      }
     }
   }
 }
 ```
 
-Config file locations:
-- **macOS:** `~/Library/Application Support/Claude/claude_desktop_config.json`
-- **Windows:** `%APPDATA%\Claude\claude_desktop_config.json`
+**Step 3 — Restart Claude Desktop.**
 
-### Claude Code
+The sap-wm-mcp tools appear automatically in the tools panel. You'll see a hammer icon — click it to confirm the 7 WM tools are loaded.
 
-Add to `.mcp.json` in your project root:
+> **Note:** If you already have other MCP servers configured, add `sap-wm-mcp` as an additional entry inside `"mcpServers"` — do not replace the whole file.
+
+---
+
+#### Claude Code
+
+**Step 1 — Create `.mcp.json` in your project root** (or add to an existing one):
 
 ```json
 {
@@ -148,15 +173,151 @@ Add to `.mcp.json` in your project root:
       "type": "stdio",
       "command": "npx",
       "args": ["sap-wm-mcp"],
-      "cwd": "/path/to/folder/with/.env"
+      "env": {
+        "SAP_URL": "https://your-sap-host:44300",
+        "SAP_CLIENT": "100",
+        "SAP_USER": "your-user",
+        "SAP_PASSWORD": "your-password",
+        "SAP_INSECURE": "true"
+      }
     }
   }
 }
 ```
 
-### Other MCP clients
+**Step 2 — Verify the tools are loaded:**
 
-Any MCP-compatible client using **stdio transport** works. Point `command` at `npx sap-wm-mcp` (or the global binary) with `cwd` set to the directory containing your `.env`.
+Open Claude Code in that directory and run:
+
+```
+/mcp
+```
+
+You should see `sap-wm-mcp` listed as connected with 7 tools available.
+
+> **`.mcp.json` is project-scoped.** Add it to `.gitignore` — it contains credentials. Each team member configures their own copy with their own SAP user.
+
+---
+
+#### Cursor, Windsurf, and other MCP clients
+
+Any MCP client that supports **stdio transport** works. Use the same `env` block approach — pass credentials as environment variables, not via a `.env` file.
+
+Generic config pattern:
+
+```json
+{
+  "mcpServers": {
+    "sap-wm-mcp": {
+      "command": "npx",
+      "args": ["sap-wm-mcp"],
+      "env": {
+        "SAP_URL": "https://your-sap-host:44300",
+        "SAP_CLIENT": "100",
+        "SAP_USER": "your-user",
+        "SAP_PASSWORD": "your-password",
+        "SAP_INSECURE": "true"
+      }
+    }
+  }
+}
+```
+
+---
+
+### Option B — Clone locally (for developers)
+
+Use this if you want to modify tools, add new capabilities, or contribute back.
+
+```bash
+git clone https://github.com/CodeOfHANA/sap-wm-mcp.git
+cd sap-wm-mcp
+npm install
+cp .env.example .env    # fill in your SAP credentials
+node index.js           # server starts on stdio, ready to accept MCP connections
+```
+
+Then point your MCP client at the local file instead of npx:
+
+**Claude Desktop:**
+```json
+{
+  "mcpServers": {
+    "sap-wm-mcp": {
+      "command": "node",
+      "args": ["/absolute/path/to/sap-wm-mcp/index.js"]
+    }
+  }
+}
+```
+
+**Claude Code `.mcp.json`:**
+```json
+{
+  "mcpServers": {
+    "sap-wm-mcp": {
+      "type": "stdio",
+      "command": "node",
+      "args": ["index.js"]
+    }
+  }
+}
+```
+
+The `.env` file in the project root is loaded automatically.
+
+---
+
+### Verify it's working
+
+Once configured and restarted, ask Claude any warehouse question:
+
+```
+"Show me the status of bins in warehouse 102"
+"How many empty bins are in storage type 003?"
+"Where is material TG0001 stored?"
+"What is the overall utilization of warehouse 102?"
+```
+
+If the tools are connected, Claude will call `get_bin_status`, `find_empty_bins`, or `get_stock_for_material` automatically — no prompting needed.
+
+For write operations:
+```
+"Move 10 ST of TG0001 from bin 0000000017 to bin 1-013 in warehouse 102, movement type 999, plant 1010"
+"Confirm transfer order 652 in warehouse 102"
+```
+
+---
+
+### Example conversations
+
+Here are real prompts that work once the server is running:
+
+**Inventory queries**
+```
+"Give me a full picture of warehouse 102 — utilization, empty bins, and where the stock is"
+"Which bins in storage type 003 still have capacity?"
+"How much stock of TG0001 do we have, and in which bins?"
+```
+
+**Transfer order operations**
+```
+"Create a transfer order to move 5 ST of TG0001 from bin 0000000017 (type 999)
+ to bin 1-014 (type 003), warehouse 102, movement type 999, plant 1010"
+
+"Confirm transfer order number 0000000654 in warehouse 102"
+
+"Confirm all transfer orders on storage unit 00000000001000000017"
+```
+
+**Operational decisions**
+```
+"I need to relocate stock from type 999 to type 003 — which bins are available?"
+"Show me all open transfer orders for warehouse 102"
+"Find 5 empty bins in storage type 003 that I can use as relocation targets"
+```
+
+Claude will chain multiple tool calls automatically when needed — for example, it will call `find_empty_bins` first and then `create_transfer_order` in a single conversation turn.
 
 ---
 
