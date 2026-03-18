@@ -103,10 +103,12 @@ server.tool(
     plant:          z.string().describe('Plant e.g. 1710'),
     quantity:       z.number().describe('Quantity to move'),
     unitOfMeasure:  z.string().describe('Unit of measure e.g. ST, KG'),
-    sourceType:     z.string().optional().default('').describe('Source storage type (blank = use suggested)'),
-    sourceBin:      z.string().optional().default('').describe('Source bin (blank = system picks)'),
-    destType:       z.string().describe('Destination storage type e.g. 001'),
-    destBin:        z.string().describe('Destination bin e.g. 01-01-01')
+    sourceType:         z.string().optional().default('').describe('Source storage type e.g. 001'),
+    sourceBin:          z.string().optional().default('').describe('Source bin e.g. 01-02-01'),
+    sourceStorageUnit:  z.string().optional().default('').describe('Source storage unit (LENUM) — required for SU-managed types e.g. 00000000001000000017'),
+    destType:           z.string().describe('Destination storage type e.g. 001'),
+    destBin:            z.string().describe('Destination bin e.g. 01-06-03'),
+    destStorageUnit:    z.string().optional().default('').describe('Destination storage unit (LENUM) — for SU-managed types, same as source SU when moving full SU')
   },
   async (params) => {
     try {

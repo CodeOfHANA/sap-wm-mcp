@@ -1,41 +1,48 @@
 import { s4hGet } from '../lib/s4hClient.js';
 
-const BIN_BASE = `/sap/opu/odata4/sap/api_whse_storage_bin_2/srvd_a2x/sap/warehousestoragebin/0001/WarehouseStorageBin`;
-const STOCK_BASE = `/sap/opu/odata4/sap/api_whse_physstockprod/srvd_a2x/sap/whsephysicalstockproducts/0001/WarehousePhysicalStockProducts`;
+const BASE = `/sap/opu/odata4/iwbep/all/srvd/sap/zsd_wmmcpservice/0001/WMStorageBin`;
 
 export async function getBinUtilization({ warehouse, storageType, top = 100 }) {
-  const binFilters = [`EWMWarehouse eq '${warehouse}'`];
-  if (storageType) binFilters.push(`EWMStorageType eq '${storageType}'`);
+  const filters = [`WarehouseNumber eq '${warehouse}'`];
+  if (storageType) filters.push(`StorageType eq '${storageType}'`);
 
-  const [binData, stockData] = await Promise.all([
-    s4hGet(`${BIN_BASE}?$filter=${encodeURIComponent(binFilters.join(' and '))}&$top=${top}`),
-    s4hGet(`${STOCK_BASE}?$filter=${encodeURIComponent(`EWMWarehouse eq '${warehouse}'`)}&$top=${top}`)
-  ]);
+  const path = `${BASE}?$filter=${encodeURIComponent(filters.join(' and '))}&$top=${top}`;
+  const data = await s4hGet(path);
 
-  const totalBins = binData.value.length;
-  const emptyBins = binData.value.filter(b => b.EWMStorageBinIsEmpty).length;
-  const occupiedBins = totalBins - emptyBins;
-  const blockedBins = binData.value.filter(b => b.EWMStorBinIsBlockedForPutaway || b.EWMStorBinIsBlockedForRemoval).length;
-  const utilizationPct = totalBins > 0 ? Math.round((occupiedBins / totalBins) * 100) : 0;
+  const bins = data.value;
+  const total = bins.length;
+  const empty = bins.filter(b => b.IsEmpty).length;
+  const full = bins.filter(b => b.IsFull).length;
+  const occupied = total - empty;
+  const blockedPutaway = bins.filter(b => b.PutawayBlock).length;
+  const blockedRemoval = bins.filter(b => b.RemovalBlock).length;
 
-  // Group stock by storage type
-  const stockByType = {};
-  for (const s of stockData.value) {
-    const type = s.EWMStorageType || 'unknown';
-    if (!stockByType[type]) stockByType[type] = { quantity: 0, unit: s.EWMBaseUnit };
-    stockByType[type].quantity += parseFloat(s.EWMStockQuantityInBaseUnit || 0);
+  // Group by storage type
+  const byType = {};
+  for (const b of bins) {
+    const t = b.StorageType;
+    if (!byType[t]) byType[t] = { total: 0, empty: 0, occupied: 0 };
+    byType[t].total++;
+    if (b.IsEmpty) byType[t].empty++;
+    else byType[t].occupied++;
   }
 
   return {
     warehouse,
-    storageType: storageType || 'all',
+    storageType: storageType ?? 'all',
     summary: {
-      totalBins,
-      occupiedBins,
-      emptyBins,
-      blockedBins,
-      utilizationPercent: utilizationPct,
+      totalBins: total,
+      emptyBins: empty,
+      occupiedBins: occupied,
+      fullBins: full,
+      blockedForPutaway: blockedPutaway,
+      blockedForRemoval: blockedRemoval,
+      utilizationPct: total > 0 ? Math.round((occupied / total) * 100) : 0
     },
-    stockByStorageType: stockByType
+    byStorageType: Object.entries(byType).map(([type, stats]) => ({
+      storageType: type,
+      ...stats,
+      utilizationPct: stats.total > 0 ? Math.round((stats.occupied / stats.total) * 100) : 0
+    }))
   };
 }

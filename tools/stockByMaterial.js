@@ -1,10 +1,11 @@
 import { s4hGet } from '../lib/s4hClient.js';
 
-const BASE = `/sap/opu/odata4/sap/api_whse_physstockprod/srvd_a2x/sap/whsephysicalstockproducts/0001/WarehousePhysicalStockProducts`;
+const BASE = `/sap/opu/odata4/iwbep/all/srvd/sap/zsd_wmmcpservice/0001/WMWarehouseStock`;
 
-export async function getStockForMaterial({ warehouse, material, top = 20 }) {
-  const filters = [`EWMWarehouse eq '${warehouse}'`];
-  if (material) filters.push(`Product eq '${material}'`);
+export async function getStockForMaterial({ warehouse, material, storageType, top = 20 }) {
+  const filters = [`WarehouseNumber eq '${warehouse}'`];
+  if (material) filters.push(`Material eq '${material}'`);
+  if (storageType) filters.push(`StorageType eq '${storageType}'`);
 
   const path = `${BASE}?$filter=${encodeURIComponent(filters.join(' and '))}&$top=${top}`;
   const data = await s4hGet(path);
@@ -12,15 +13,21 @@ export async function getStockForMaterial({ warehouse, material, top = 20 }) {
   return {
     count: data.value.length,
     warehouse,
-    material: material || 'all',
-    stock: data.value.map(s => ({
-      product: s.Product,
-      warehouse: s.EWMWarehouse,
-      storageType: s.EWMStorageType,
-      storageBin: s.EWMStorageBin,
-      quantity: s.EWMStockQuantityInBaseUnit,
-      unit: s.EWMBaseUnit,
-      stockCategory: s.EWMStockCategory,
+    material: material ?? 'all',
+    stock: data.value.map(q => ({
+      bin: q.StorageBin,
+      storageType: q.StorageType,
+      quantNumber: q.QuantNumber,
+      material: q.Material,
+      plant: q.Plant,
+      batch: q.Batch,
+      totalStock: q.TotalStock,
+      availableStock: q.AvailableStock,
+      pickQuantity: q.PickQuantity,
+      transferQuantity: q.TransferQuantity,
+      uom: q.UnitOfMeasure,
+      stockCategory: q.StockCategory,
+      lastMovement: q.LastMovementDate
     }))
   };
 }

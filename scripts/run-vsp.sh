@@ -2,8 +2,8 @@
 # Wrapper script: loads .env then runs vsp.exe
 # Keeps credentials out of .mcp.json
 
-SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-ENV_FILE="$SCRIPT_DIR/../.env"
+SCRIPT_DIR="$(cd "${BASH_SOURCE[0]%/*}" && pwd)"
+ENV_FILE="$(cd "$SCRIPT_DIR/.." && pwd)/.env"
 
 if [ -f "$ENV_FILE" ]; then
   set -a

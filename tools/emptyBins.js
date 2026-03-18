@@ -1,13 +1,13 @@
 import { s4hGet } from '../lib/s4hClient.js';
 
-const BASE = `/sap/opu/odata4/sap/api_whse_storage_bin_2/srvd_a2x/sap/warehousestoragebin/0001/WarehouseStorageBin`;
+const BASE = `/sap/opu/odata4/iwbep/all/srvd/sap/zsd_wmmcpservice/0001/WMStorageBin`;
 
 export async function findEmptyBins({ warehouse, storageType, top = 50 }) {
   const filters = [
-    `EWMWarehouse eq '${warehouse}'`,
-    `EWMStorageBinIsEmpty eq true`
+    `WarehouseNumber eq '${warehouse}'`,
+    `IsEmpty eq true`
   ];
-  if (storageType) filters.push(`EWMStorageType eq '${storageType}'`);
+  if (storageType) filters.push(`StorageType eq '${storageType}'`);
 
   const path = `${BASE}?$filter=${encodeURIComponent(filters.join(' and '))}&$top=${top}`;
   const data = await s4hGet(path);
@@ -15,12 +15,16 @@ export async function findEmptyBins({ warehouse, storageType, top = 50 }) {
   return {
     count: data.value.length,
     warehouse,
-    storageType: storageType || 'all',
+    storageType: storageType ?? 'all',
     emptyBins: data.value.map(b => ({
-      bin: b.EWMStorageBin,
-      storageType: b.EWMStorageType,
-      blockedPutaway: b.EWMStorBinIsBlockedForPutaway,
-      blockedRemoval: b.EWMStorBinIsBlockedForRemoval,
+      bin: b.StorageBin,
+      storageType: b.StorageType,
+      storageSection: b.StorageSection,
+      binType: b.StorageBinType,
+      blockedPutaway: b.PutawayBlock,
+      blockedRemoval: b.RemovalBlock,
+      remainingCapacity: b.RemainingCapacity,
+      lastMovement: b.LastMovementDate
     }))
   };
 }
