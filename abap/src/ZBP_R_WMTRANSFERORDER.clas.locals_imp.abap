@@ -1,4 +1,4 @@
-CLASS lcl_handler DEFINITION INHERITING FROM cl_abap_behavior_handler.
+CLASS lhc_TransferOrder DEFINITION INHERITING FROM cl_abap_behavior_handler.
   PRIVATE SECTION.
     METHODS:
       read FOR READ
@@ -11,221 +11,187 @@ CLASS lcl_handler DEFINITION INHERITING FROM cl_abap_behavior_handler.
         IMPORTING keys FOR ACTION TransferOrder~ConfirmTransferOrderSU RESULT result.
 ENDCLASS.
 
-CLASS lcl_saver DEFINITION INHERITING FROM cl_abap_behavior_saver.
+CLASS lsc_ZR_WMTransferOrder DEFINITION INHERITING FROM cl_abap_behavior_saver.
   PROTECTED SECTION.
-    METHODS save_modified REDEFINITION.
+    METHODS save REDEFINITION.
 ENDCLASS.
 
-CLASS lcl_handler IMPLEMENTATION.
+CLASS lhc_TransferOrder IMPLEMENTATION.
 
   METHOD read.
     LOOP AT keys INTO DATA(ls_key).
-      SELECT SINGLE lgnum, tanum, bwlvs, kquit, bdatu, bzeit, bname, trart, tbnum, noitm
-        FROM ltak
-        WHERE lgnum = @ls_key-WarehouseNumber
-          AND tanum = @ls_key-TransferOrderNumber
-        INTO @DATA(ls_ltak).
-      IF sy-subrc = 0.
-        APPEND VALUE #(
-          WarehouseNumber     = ls_ltak-lgnum
-          TransferOrderNumber = ls_ltak-tanum
-          MovementType        = ls_ltak-bwlvs
-          IsConfirmed         = ls_ltak-kquit
-          CreatedDate         = ls_ltak-bdatu
-          CreatedTime         = ls_ltak-bzeit
-          CreatedBy           = ls_ltak-bname
-          ShipmentType        = ls_ltak-trart
-          TransferReqNumber   = ls_ltak-tbnum
-          NumberOfItems       = ls_ltak-noitm
-        ) TO result.
-      ELSE.
-        APPEND VALUE #(
-          %key  = ls_key
-          %fail = VALUE #( cause = if_abap_behv=>cause-not_found )
-        ) TO failed-transferorder.
-      ENDIF.
+      APPEND VALUE #(
+        %key  = ls_key-%key
+        %fail = VALUE #( cause = if_abap_behv=>cause-not_found )
+      ) TO failed-transferorder.
     ENDLOOP.
   ENDMETHOD.
 
   METHOD create_transfer_order.
+    DATA: lv_lgnum          TYPE ltak-lgnum,
+          lv_bwlvs          TYPE ltak-bwlvs,
+          lv_matnr          TYPE ltap-matnr,
+          lv_werks          TYPE ltap-werks,
+          lv_anfme          TYPE rl03tanfme,
+          lv_altme          TYPE ltap-altme,
+          lv_vltyp          TYPE ltap-vltyp,
+          lv_vlpla          TYPE ltap-vlpla,
+          lv_vlenr          TYPE ltap-vlenr,
+          lv_nltyp          TYPE ltap-nltyp,
+          lv_nlpla          TYPE ltap-nlpla,
+          lv_nlenr          TYPE ltap-nlenr,
+          lv_tanum          TYPE ltak-tanum,
+          lv_ev_subrc       TYPE sy-subrc,
+          lv_ev_msg         TYPE string,
+          lv_msg            TYPE string,
+          lv_rfc_errtxt(255) TYPE c.
+
     LOOP AT keys INTO DATA(ls_key).
       DATA(ls_param) = ls_key-%param.
-      DATA lv_tanum  TYPE ltak-tanum.
-      DATA ls_ltap   TYPE ltap.
+      lv_lgnum = ls_param-WarehouseNumber.
+      lv_bwlvs = ls_param-MovementType.
+      lv_matnr = ls_param-Material.
+      lv_werks = ls_param-Plant.
+      lv_anfme = ls_param-Quantity.
+      lv_altme = ls_param-UnitOfMeasure.
+      lv_vltyp = ls_param-SourceStorageType.
+      lv_vlpla = ls_param-SourceBin.
+      lv_vlenr = ls_param-SourceStorageUnit.
+      lv_nltyp = ls_param-DestStorageType.
+      lv_nlpla = ls_param-DestBin.
+      lv_nlenr = ls_param-DestStorageUnit.
+      CLEAR: lv_tanum, lv_ev_subrc, lv_ev_msg, lv_rfc_errtxt.
 
-      CALL FUNCTION 'L_TO_CREATE_SINGLE'
+      " Call RFC wrapper in a separate session (DESTINATION 'NONE' loopback).
+      " This isolates L_TO_CREATE_SINGLE's COMMIT WORK from the RAP LUW.
+      CALL FUNCTION 'ZWM_TO_CREATE'
+        DESTINATION 'NONE'
         EXPORTING
-          i_lgnum = ls_param-WarehouseNumber
-          i_bwlvs = ls_param-MovementType
-          i_matnr = ls_param-Material
-          i_werks = ls_param-Plant
-          i_anfme = ls_param-Quantity
-          i_altme = ls_param-UnitOfMeasure
-          i_vltyp = ls_param-SourceStorageType
-          i_vlpla = ls_param-SourceBin
-          i_nltyp = ls_param-DestStorageType
-          i_nlpla = ls_param-DestBin
+          i_lgnum = lv_lgnum
+          i_bwlvs = lv_bwlvs
+          i_matnr = lv_matnr
+          i_werks = lv_werks
+          i_anfme = lv_anfme
+          i_altme = lv_altme
+          i_vltyp = lv_vltyp
+          i_vlpla = lv_vlpla
+          i_vlenr = lv_vlenr
+          i_nltyp = lv_nltyp
+          i_nlpla = lv_nlpla
+          i_nlenr = lv_nlenr
         IMPORTING
-          e_tanum = lv_tanum
-          e_ltap  = ls_ltap
+          e_tanum  = lv_tanum
+          ev_subrc = lv_ev_subrc
+          ev_msg   = lv_ev_msg
         EXCEPTIONS
-          OTHERS  = 1.
+          system_failure        = 1 MESSAGE lv_rfc_errtxt
+          communication_failure = 2 MESSAGE lv_rfc_errtxt
+          OTHERS                = 3.
 
       IF sy-subrc <> 0.
+        " RFC transport error
+        lv_msg = |RFC call failed (RC { sy-subrc }): { lv_rfc_errtxt }|.
         APPEND VALUE #(
           %cid = ls_key-%cid
           %msg = new_message_with_text(
             severity = if_abap_behv_message=>severity-error
-            text     = 'Transfer order creation failed' )
+            text     = lv_msg )
         ) TO reported-transferorder.
-        CONTINUE.
+        APPEND VALUE #( %cid = ls_key-%cid ) TO failed-transferorder.
+      ELSEIF lv_ev_subrc = 0.
+        " TO created successfully — set key fields dynamically
+        DATA ls_res LIKE LINE OF result.
+        ls_res-%cid = ls_key-%cid.
+        ASSIGN COMPONENT 'WAREHOUSENUMBER' OF STRUCTURE ls_res TO FIELD-SYMBOL(<f_lgnum>).
+        IF sy-subrc = 0. <f_lgnum> = lv_lgnum. ENDIF.
+        ASSIGN COMPONENT 'TRANSFERORDERNUMBER' OF STRUCTURE ls_res TO FIELD-SYMBOL(<f_tanum>).
+        IF sy-subrc = 0. <f_tanum> = lv_tanum. ENDIF.
+        APPEND ls_res TO result.
+      ELSE.
+        " Business error returned by ZWM_TO_CREATE
+        APPEND VALUE #(
+          %cid = ls_key-%cid
+          %msg = new_message_with_text(
+            severity = if_abap_behv_message=>severity-error
+            text     = lv_ev_msg )
+        ) TO reported-transferorder.
+        APPEND VALUE #( %cid = ls_key-%cid ) TO failed-transferorder.
       ENDIF.
-
-      APPEND VALUE #(
-        %cid_ref            = ls_key-%cid
-        WarehouseNumber     = ls_param-WarehouseNumber
-        TransferOrderNumber = lv_tanum
-      ) TO result.
     ENDLOOP.
   ENDMETHOD.
 
   METHOD confirm_transfer_order.
+    DATA: lt_ltap_conf TYPE STANDARD TABLE OF ltap_conf.
+
     LOOP AT keys INTO DATA(ls_key).
-      DATA lt_ltap_conf TYPE TABLE OF ltap_conf.
-
-      SELECT lgnum, tanum, tapos, nltyp, nlpla, matnr, charg, werks,
-             nsola, nsolm, altme, meins
-        FROM ltap
-        WHERE lgnum = @ls_key-WarehouseNumber
-          AND tanum = @ls_key-TransferOrderNumber
-          AND kzqui = @space
-        INTO TABLE @DATA(lt_ltap).
-
-      LOOP AT lt_ltap INTO DATA(ls_ltap).
-        DATA ls_conf TYPE ltap_conf.
-        ls_conf-lgnum = ls_ltap-lgnum.
-        ls_conf-tanum = ls_ltap-tanum.
-        ls_conf-tapos = ls_ltap-tapos.
-        ls_conf-nltyp = ls_ltap-nltyp.
-        ls_conf-nlpla = ls_ltap-nlpla.
-        ls_conf-matnr = ls_ltap-matnr.
-        ls_conf-charg = ls_ltap-charg.
-        ls_conf-werks = ls_ltap-werks.
-        ls_conf-nista = ls_ltap-nsola.
-        ls_conf-nistm = ls_ltap-nsolm.
-        ls_conf-altme = ls_ltap-altme.
-        ls_conf-meins = ls_ltap-meins.
-        APPEND ls_conf TO lt_ltap_conf.
-      ENDLOOP.
-
       CALL FUNCTION 'L_TO_CONFIRM'
         EXPORTING
-          i_lgnum  = ls_key-WarehouseNumber
-          i_tanum  = ls_key-TransferOrderNumber
-          i_squit  = 'X'
+          i_lgnum         = ls_key-%key-WarehouseNumber
+          i_tanum         = ls_key-%key-TransferOrderNumber
+          i_squit         = 'X'
+          i_commit_work   = ' '
         TABLES
-          t_ltap_conf = lt_ltap_conf
+          t_ltap_conf     = lt_ltap_conf
         EXCEPTIONS
-          OTHERS = 1.
+          to_confirmed    = 1
+          to_doesnt_exist = 2
+          foreign_lock    = 3
+          nothing_to_do   = 4
+          OTHERS          = 5.
 
       IF sy-subrc <> 0.
         APPEND VALUE #(
-          %key = VALUE #( WarehouseNumber     = ls_key-WarehouseNumber
-                          TransferOrderNumber = ls_key-TransferOrderNumber )
+          %key = ls_key-%key
           %msg = new_message_with_text(
             severity = if_abap_behv_message=>severity-error
-            text     = 'Transfer order confirmation failed' )
+            text     = |TO confirmation failed (RC { sy-subrc })| )
         ) TO reported-transferorder.
-        CONTINUE.
+        APPEND VALUE #( %key = ls_key-%key ) TO failed-transferorder.
+      ELSE.
+        APPEND VALUE #( %key = ls_key-%key ) TO result.
       ENDIF.
-
-      APPEND VALUE #(
-        %key_in             = ls_key
-        WarehouseNumber     = ls_key-WarehouseNumber
-        TransferOrderNumber = ls_key-TransferOrderNumber
-      ) TO result.
     ENDLOOP.
   ENDMETHOD.
 
   METHOD confirm_transfer_order_su.
+    DATA: lt_ltap_conf TYPE STANDARD TABLE OF ltap_conf.
+
     LOOP AT keys INTO DATA(ls_key).
       DATA(ls_param) = ls_key-%param.
-      DATA lt_ltap_conf TYPE TABLE OF ltap_conf.
-      DATA lv_lgnum TYPE ltak-lgnum.
-      DATA lv_tanum TYPE ltak-tanum.
-
-      " Get open TO items for this storage unit
-      SELECT lgnum, tanum, tapos, nltyp, nlpla, matnr, charg, werks,
-             nsola, nsolm, altme, meins
-        FROM ltap
-        WHERE lenum = @ls_param-StorageUnit
-          AND kzqui = @space
-        INTO TABLE @DATA(lt_ltap).
-
-      IF lt_ltap IS INITIAL.
-        APPEND VALUE #(
-          %cid = ls_key-%cid
-          %msg = new_message_with_text(
-            severity = if_abap_behv_message=>severity-error
-            text     = 'No open transfer order items found for this storage unit' )
-        ) TO reported-transferorder.
-        CONTINUE.
-      ENDIF.
-
-      " Take warehouse and TO number from first item for the result
-      READ TABLE lt_ltap INTO DATA(ls_first) INDEX 1.
-      lv_lgnum = ls_first-lgnum.
-      lv_tanum = ls_first-tanum.
-
-      " Build confirmation table — actual = planned (no differences)
-      LOOP AT lt_ltap INTO DATA(ls_ltap).
-        DATA ls_conf TYPE ltap_conf.
-        ls_conf-lgnum = ls_ltap-lgnum.
-        ls_conf-tanum = ls_ltap-tanum.
-        ls_conf-tapos = ls_ltap-tapos.
-        ls_conf-nltyp = ls_ltap-nltyp.
-        ls_conf-nlpla = ls_ltap-nlpla.
-        ls_conf-matnr = ls_ltap-matnr.
-        ls_conf-charg = ls_ltap-charg.
-        ls_conf-werks = ls_ltap-werks.
-        ls_conf-nista = ls_ltap-nsola.
-        ls_conf-nistm = ls_ltap-nsolm.
-        ls_conf-altme = ls_ltap-altme.
-        ls_conf-meins = ls_ltap-meins.
-        APPEND ls_conf TO lt_ltap_conf.
-      ENDLOOP.
 
       CALL FUNCTION 'L_TO_CONFIRM_SU'
         EXPORTING
-          i_lenum = ls_param-StorageUnit
-          i_squit = 'X'
+          i_lenum         = ls_param-StorageUnit
+          i_squit         = 'X'
+          i_commit_work   = ' '
         TABLES
-          t_ltap_conf = lt_ltap_conf
+          t_ltap_conf     = lt_ltap_conf
         EXCEPTIONS
-          OTHERS = 1.
+          su_confirmed    = 1
+          su_doesnt_exist = 2
+          foreign_lock    = 3
+          nothing_to_do   = 4
+          OTHERS          = 5.
 
       IF sy-subrc <> 0.
         APPEND VALUE #(
           %cid = ls_key-%cid
           %msg = new_message_with_text(
             severity = if_abap_behv_message=>severity-error
-            text     = 'Storage unit TO confirmation failed' )
+            text     = |SU confirmation failed (RC { sy-subrc })| )
         ) TO reported-transferorder.
-        CONTINUE.
+        APPEND VALUE #( %cid = ls_key-%cid ) TO failed-transferorder.
+      ELSE.
+        APPEND VALUE #( %cid = ls_key-%cid ) TO result.
       ENDIF.
-
-      APPEND VALUE #(
-        %cid_ref            = ls_key-%cid
-        WarehouseNumber     = lv_lgnum
-        TransferOrderNumber = lv_tanum
-      ) TO result.
     ENDLOOP.
   ENDMETHOD.
 
 ENDCLASS.
 
-CLASS lcl_saver IMPLEMENTATION.
-  METHOD save_modified.
-    " L_TO_CREATE_SINGLE, L_TO_CONFIRM, L_TO_CONFIRM_SU all commit internally
+CLASS lsc_ZR_WMTransferOrder IMPLEMENTATION.
+  METHOD save.
+    " RAP framework commits the LUW automatically after this method returns.
+    " FMs called with I_COMMIT_WORK = ' ' — no explicit COMMIT needed here.
   ENDMETHOD.
 ENDCLASS.
