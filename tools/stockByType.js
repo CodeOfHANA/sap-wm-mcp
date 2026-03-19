@@ -1,37 +1,38 @@
 import { s4hGet } from '../lib/s4hClient.js';
+import { esc } from '../lib/sanitize.js';
 
 const BASE = `/sap/opu/odata4/iwbep/all/srvd/sap/zsd_wmmcpservice/0001/WMWarehouseStock`;
 
 export async function getStockByType({ warehouse, storageType, bin, top = 100 }) {
-  const filters = [`WarehouseNumber eq '${warehouse}'`];
-  if (storageType) filters.push(`StorageType eq '${storageType}'`);
-  if (bin)         filters.push(`StorageBin eq '${bin}'`);
+  const filters = [`WarehouseNumber eq '${esc(warehouse)}'`];
+  if (storageType) filters.push(`StorageType eq '${esc(storageType)}'`);
+  if (bin)         filters.push(`StorageBin eq '${esc(bin)}'`);
 
   const path = `${BASE}?$filter=${encodeURIComponent(filters.join(' and '))}&$top=${top}`;
   const data = await s4hGet(path);
-  const rows  = data.value ?? [];
+  const rows = data.value ?? [];
 
-  // Group by storage type for summary
   const byType = {};
   for (const r of rows) {
     const t = r.StorageType ?? '?';
     if (!byType[t]) byType[t] = { storageType: t, binCount: 0, totalQty: 0, materials: new Set() };
     byType[t].binCount++;
     byType[t].totalQty += parseFloat(r.TotalStock ?? 0);
-    byType[t].materials.add((r.Material ?? r.Matnr ?? '').trimStart());
+    byType[t].materials.add((r.Material ?? '').trimStart());
   }
 
   const summary = Object.values(byType).map(s => ({
-    storageType:   s.storageType,
-    occupiedBins:  s.binCount,
-    totalQty:      s.totalQty,
+    storageType:     s.storageType,
+    occupiedBins:    s.binCount,
+    totalQty:        s.totalQty,
     uniqueMaterials: s.materials.size
   }));
 
   return {
-    count: rows.length,
+    count:    rows.length,
+    truncated: rows.length === top,
     warehouse,
-    filters: { storageType: storageType ?? 'all', bin: bin ?? 'all' },
+    filters:  { storageType: storageType ?? 'all', bin: bin ?? 'all' },
     summary,
     stock: rows.map(r => ({
       storageType: r.StorageType,

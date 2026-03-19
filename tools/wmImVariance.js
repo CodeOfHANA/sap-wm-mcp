@@ -1,15 +1,15 @@
 import { s4hGet } from '../lib/s4hClient.js';
+import { esc } from '../lib/sanitize.js';
 
 const BASE_WM = `/sap/opu/odata4/iwbep/all/srvd/sap/zsd_wmmcpservice/0001/WMWarehouseStock`;
 const BASE_IM = `/sap/opu/odata4/iwbep/all/srvd/sap/zsd_wmmcpservice/0001/WMIMStock`;
 
 export async function getWMIMVariance({ warehouse, plant, storageLocation, material, threshold = 0 }) {
-  // Step 1 — Fetch WM stock, aggregate by Material + Plant
-  const wmFilters = [`WarehouseNumber eq '${warehouse}'`];
-  if (material) wmFilters.push(`Material eq '${material}'`);
+  // Step 1 — WM stock aggregated by Material + Plant
+  const wmFilters = [`WarehouseNumber eq '${esc(warehouse)}'`];
+  if (material) wmFilters.push(`Material eq '${esc(material)}'`);
 
-  const wmPath = `${BASE_WM}?$filter=${encodeURIComponent(wmFilters.join(' and '))}&$top=500`;
-  const wmData = await s4hGet(wmPath);
+  const wmData = await s4hGet(`${BASE_WM}?$filter=${encodeURIComponent(wmFilters.join(' and '))}&$top=500`);
   const wmRows = wmData.value ?? [];
 
   const derivedPlant = plant ?? wmRows[0]?.Plant ?? '';
@@ -22,15 +22,12 @@ export async function getWMIMVariance({ warehouse, plant, storageLocation, mater
     wmByMat[key].wmStock += parseFloat(r.TotalStock ?? 0);
   }
 
-  // Step 2 — Fetch IM stock filtered by plant + optionally storage location (LGORT)
-  // storageLocation (LGORT) narrows MARD to the specific location linked to the warehouse
-  // e.g. for warehouse 102 / plant 1010 this is typically LGORT '0002'
-  const imFilters = [`Plant eq '${derivedPlant}'`];
-  if (storageLocation) imFilters.push(`StorageLocation eq '${storageLocation}'`);
-  if (material)        imFilters.push(`Material eq '${material}'`);
+  // Step 2 — IM stock, narrowed by LGORT when provided
+  const imFilters = [`Plant eq '${esc(derivedPlant)}'`];
+  if (storageLocation) imFilters.push(`StorageLocation eq '${esc(storageLocation)}'`);
+  if (material)        imFilters.push(`Material eq '${esc(material)}'`);
 
-  const imPath = `${BASE_IM}?$filter=${encodeURIComponent(imFilters.join(' and '))}&$top=500`;
-  const imData = await s4hGet(imPath);
+  const imData = await s4hGet(`${BASE_IM}?$filter=${encodeURIComponent(imFilters.join(' and '))}&$top=500`);
   const imRows = imData.value ?? [];
 
   const imByMat = {};
@@ -53,7 +50,6 @@ export async function getWMIMVariance({ warehouse, plant, storageLocation, mater
     const wmStock = wm?.wmStock ?? 0;
     const imStock = im?.imStock ?? 0;
     const variance = wmStock - imStock;
-
     if (Math.abs(variance) <= threshold) continue;
 
     const [mat, plt] = key.split('__');
@@ -66,7 +62,7 @@ export async function getWMIMVariance({ warehouse, plant, storageLocation, mater
       qiStock:         im?.qiStock ?? 0,
       restrictedStock: im?.restrictedStock ?? 0,
       variance,
-      status:          variance === 0 ? 'ok' : variance > 0 ? 'wm_exceeds_im' : 'im_exceeds_wm'
+      status: variance === 0 ? 'ok' : variance > 0 ? 'wm_exceeds_im' : 'im_exceeds_wm'
     });
   }
 

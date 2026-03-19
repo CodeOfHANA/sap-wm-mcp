@@ -1,4 +1,5 @@
 import { s4hGet } from '../lib/s4hClient.js';
+import { esc } from '../lib/sanitize.js';
 
 const BASE = `/sap/opu/odata4/iwbep/all/srvd/sap/zsd_wmmcpservice/0001/WMCycleCountBin`;
 
@@ -6,8 +7,8 @@ const BASE = `/sap/opu/odata4/iwbep/all/srvd/sap/zsd_wmmcpservice/0001/WMCycleCo
 const EXCLUDE_TYPES = ['999', '998', '902'];
 
 export async function getInventoryAnomalies({ warehouse, storageType, top = 300 }) {
-  const filters = [`WarehouseNumber eq '${warehouse}'`];
-  if (storageType) filters.push(`StorageType eq '${storageType}'`);
+  const filters = [`WarehouseNumber eq '${esc(warehouse)}'`];
+  if (storageType) filters.push(`StorageType eq '${esc(storageType)}'`);
 
   const path = `${BASE}?$filter=${encodeURIComponent(filters.join(' and '))}&$top=${top}`;
   const data = await s4hGet(path);
@@ -85,6 +86,7 @@ export async function getInventoryAnomalies({ warehouse, storageType, top = 300 
   return {
     warehouse,
     filters: { storageType: storageType ?? 'all (excluding 999/998/902)' },
+    truncated: rows.length === top,
     count: anomalies.length,
     summary: byType,
     note: 'Detects bins stuck in mid-inventory-process state: empty bins still locked, open count docs never posted, or orphaned lock codes. All anomalies block normal TO processing for the affected bins.',

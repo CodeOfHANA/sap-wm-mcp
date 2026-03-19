@@ -1,19 +1,21 @@
 import { s4hGet } from '../lib/s4hClient.js';
+import { esc } from '../lib/sanitize.js';
 
 const BASE = `/sap/opu/odata4/iwbep/all/srvd/sap/zsd_wmmcpservice/0001/WMTransferRequirement`;
 
+// ' ' = open, 'B' = partial, 'T' = TO created (pending confirmation), 'C'/'E' = completed
 const STATUS_LABEL = { ' ': 'open', '': 'open', 'B': 'partial', 'T': 'to-created', 'C': 'completed', 'E': 'completed' };
 
 export async function getTransferRequirements({ warehouse, status, material, storageType, top = 50 }) {
-  const filters = [`WarehouseNumber eq '${warehouse}'`];
-  if (material)    filters.push(`Material eq '${material}'`);
-  if (storageType) filters.push(`(SourceStorageType eq '${storageType}' or DestStorageType eq '${storageType}')`);
+  const filters = [`WarehouseNumber eq '${esc(warehouse)}'`];
+  if (material)    filters.push(`Material eq '${esc(material)}'`);
+  if (storageType) filters.push(`(SourceStorageType eq '${esc(storageType)}' or DestStorageType eq '${esc(storageType)}')`);
 
-  if (status === 'open')           filters.push(`Status eq ' '`);
-  else if (status === 'partial')   filters.push(`Status eq 'B'`);
+  if (status === 'open')        filters.push(`Status eq ' '`);
+  else if (status === 'partial')    filters.push(`Status eq 'B'`);
   else if (status === 'to-created') filters.push(`Status eq 'T'`);
-  else if (status === 'completed') filters.push(`(Status eq 'C' or Status eq 'E')`);
-  else                             filters.push(`(Status eq ' ' or Status eq 'B' or Status eq 'T')`);
+  else if (status === 'completed')  filters.push(`(Status eq 'C' or Status eq 'E')`);
+  else                              filters.push(`(Status eq ' ' or Status eq 'B' or Status eq 'T')`);
 
   const path = `${BASE}?$filter=${encodeURIComponent(filters.join(' and '))}&$top=${top}`;
   const data = await s4hGet(path);
@@ -22,9 +24,10 @@ export async function getTransferRequirements({ warehouse, status, material, sto
   const today = new Date();
 
   return {
-    count: rows.length,
+    count:    rows.length,
+    truncated: rows.length === top,
     warehouse,
-    filters: { status: status ?? 'open+partial+to-created', material: material ?? 'all', storageType: storageType ?? 'all' },
+    filters:  { status: status ?? 'open+partial+to-created', material: material ?? 'all', storageType: storageType ?? 'all' },
     requirements: rows.map(r => {
       const daysSinceCreation = r.CreatedDate
         ? Math.floor((today - new Date(r.CreatedDate)) / 86400000)

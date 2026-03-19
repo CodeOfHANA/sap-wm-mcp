@@ -1,4 +1,5 @@
 import { s4hGet } from '../lib/s4hClient.js';
+import { esc } from '../lib/sanitize.js';
 
 const BASE_HEADER = `/sap/opu/odata4/iwbep/all/srvd/sap/zsd_wmmcpservice/0001/WMTransferOrder`;
 const BASE_ITEM   = `/sap/opu/odata4/iwbep/all/srvd/sap/zsd_wmmcpservice/0001/WMTransferOrderItem`;
@@ -7,46 +8,45 @@ export async function getOpenTransferOrders({ warehouse, storageType, bin, mater
 
   // Step 1 — Fetch open TO headers
   const headerFilters = [
-    `WarehouseNumber eq '${warehouse}'`,
+    `WarehouseNumber eq '${esc(warehouse)}'`,
     `IsConfirmed ne true`
   ];
   const headerPath = `${BASE_HEADER}?$filter=${encodeURIComponent(headerFilters.join(' and '))}&$top=${top}&$select=WarehouseNumber,TransferOrderNumber,MovementType,CreatedDate,CreatedTime,CreatedBy,NumberOfItems`;
   const headerData = await s4hGet(headerPath);
-  const headers = headerData.value ?? [];
+  const headers    = headerData.value ?? [];
 
   if (headers.length === 0) {
     return {
       count: 0,
+      truncated: false,
       warehouse,
       filters: { storageType: storageType ?? 'all', bin: bin ?? 'all', material: material ?? 'all' },
       orders: []
     };
   }
 
-  // Step 2 — Fetch items scoped to the open TO numbers
-  const openTaNums = new Set(headers.map(h => h.TransferOrderNumber));
+  // Step 2 — Fetch items scoped to the exact open TO numbers (avoids warehouse-wide scan)
   const toFilter = headers
-    .map(h => `TransferOrderNumber eq '${h.TransferOrderNumber}'`)
+    .map(h => `TransferOrderNumber eq '${esc(h.TransferOrderNumber)}'`)
     .join(' or ');
 
-  const itemFilters = [`WarehouseNumber eq '${warehouse}'`, `(${toFilter})`];
-  if (storageType) itemFilters.push(`(SourceStorageType eq '${storageType}' or DestStorageType eq '${storageType}')`);
-  if (bin)         itemFilters.push(`(SourceBin eq '${bin}' or DestBin eq '${bin}')`);
-  if (material)    itemFilters.push(`Material eq '${material}'`);
+  const itemFilters = [`WarehouseNumber eq '${esc(warehouse)}'`, `(${toFilter})`];
+  if (storageType) itemFilters.push(`(SourceStorageType eq '${esc(storageType)}' or DestStorageType eq '${esc(storageType)}')`);
+  if (bin)         itemFilters.push(`(SourceBin eq '${esc(bin)}' or DestBin eq '${esc(bin)}')`);
+  if (material)    itemFilters.push(`Material eq '${esc(material)}'`);
 
   const itemPath = `${BASE_ITEM}?$filter=${encodeURIComponent(itemFilters.join(' and '))}&$top=${top * 5}`;
   const itemData = await s4hGet(itemPath);
-  const items = itemData.value ?? [];
+  const items    = itemData.value ?? [];
 
-  // Step 3 — Header lookup map
+  // Step 3 — Join headers to items in memory
   const headerMap = Object.fromEntries(headers.map(h => [h.TransferOrderNumber, h]));
-
-  const today = new Date();
+  const today     = new Date();
 
   const orders = items.map(item => {
-    const hdr    = headerMap[item.TransferOrderNumber] ?? {};
-    const reqQty  = parseFloat(item.RequiredQuantity)  || 0;
-    const confQty = parseFloat(item.ConfirmedQuantity) || 0;
+    const hdr             = headerMap[item.TransferOrderNumber] ?? {};
+    const reqQty          = parseFloat(item.RequiredQuantity)  || 0;
+    const confQty         = parseFloat(item.ConfirmedQuantity) || 0;
     const daysSinceCreation = hdr.CreatedDate
       ? Math.floor((today - new Date(hdr.CreatedDate)) / 86400000)
       : null;
@@ -73,9 +73,10 @@ export async function getOpenTransferOrders({ warehouse, storageType, bin, mater
   });
 
   return {
-    count: orders.length,
+    count:    orders.length,
+    truncated: headers.length === top,
     warehouse,
-    filters: { storageType: storageType ?? 'all', bin: bin ?? 'all', material: material ?? 'all' },
+    filters:  { storageType: storageType ?? 'all', bin: bin ?? 'all', material: material ?? 'all' },
     orders
   };
 }

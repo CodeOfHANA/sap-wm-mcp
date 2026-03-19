@@ -1,12 +1,12 @@
 import { s4hGet } from '../lib/s4hClient.js';
+import { esc } from '../lib/sanitize.js';
 
 const BASE = `/sap/opu/odata4/iwbep/all/srvd/sap/zsd_wmmcpservice/0001/WMWarehouseStock`;
 
 export async function getNegativeStock({ warehouse, storageType, top = 100 }) {
-  const filters = [`WarehouseNumber eq '${warehouse}'`];
-  if (storageType) filters.push(`StorageType eq '${storageType}'`);
+  const filters = [`WarehouseNumber eq '${esc(warehouse)}'`];
+  if (storageType) filters.push(`StorageType eq '${esc(storageType)}'`);
 
-  // Fetch all stock — OData may not support TotalStock lt 0 filter directly
   const path = `${BASE}?$filter=${encodeURIComponent(filters.join(' and '))}&$top=${top * 5}`;
   const data = await s4hGet(path);
   const rows = data.value ?? [];
@@ -26,7 +26,7 @@ export async function getNegativeStock({ warehouse, storageType, top = 100 }) {
         ? 'GI posted before TO confirmed — confirm open TO or check for missing movement'
         : 'Unexpected — investigate immediately'
     }))
-    .sort((a, b) => a.totalStock - b.totalStock); // most negative first
+    .sort((a, b) => a.totalStock - b.totalStock);
 
   const byType = {};
   for (const r of negative) {
@@ -36,10 +36,10 @@ export async function getNegativeStock({ warehouse, storageType, top = 100 }) {
   }
 
   return {
-    count: negative.length,
+    count:   negative.length,
     warehouse,
     filters: { storageType: storageType ?? 'all' },
-    byStorageType: byType,
+    byStorageType:  byType,
     negativeQuants: negative
   };
 }
