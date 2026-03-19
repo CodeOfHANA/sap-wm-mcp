@@ -13,6 +13,8 @@ Connect AI agents — Claude, Copilot, or any MCP-compatible client — directly
 >
 > This project ships a custom RAP OData V4 service that exposes classic WM operations as a proper API — and wraps it in an MCP server so AI agents can drive it. Large portions of the SAP install base are still on classic WM. This fills the gap.
 
+The **npm package** ships 18 tools covering core operations, analytics, shift management, and anomaly detection. This repository contains the 9 open-sourced tool implementations — the ABAP RAP service source and additional tool source are available separately (see [ABAP Service Installation](#abap-service-installation)).
+
 ---
 
 ## Contents
@@ -56,7 +58,7 @@ AI Agent (Claude / Copilot / any MCP client)
         └── FMs    L_TO_CREATE_SINGLE · L_TO_CONFIRM · L_TO_CONFIRM_SU
 ```
 
-Unlike EWM, classic WM has no standard OData APIs. This package ships a complete **custom RAP OData V4 service** (`ZSD_WMMCPSERVICE`) that must be installed in your SAP system first. The MCP server then calls that service. See [ABAP Service Installation](#abap-service-installation) for a one-step abapGit install.
+Unlike EWM, classic WM has no standard OData APIs. This package requires a **custom RAP OData V4 service** (`ZSD_WMMCPSERVICE`) installed in your SAP system. The MCP server calls that service. See [ABAP Service Installation](#abap-service-installation).
 
 ---
 
@@ -67,7 +69,6 @@ Unlike EWM, classic WM has no standard OData APIs. This package ships a complete
 | SAP S/4HANA or ECC | Classic Warehouse Management (LE-WM) active |
 | SAP user | Basic Auth credentials with read access to WM tables + RFC execute on `L_TO_CREATE_SINGLE` / `L_TO_CONFIRM` |
 | Node.js ≥ 20 | [nodejs.org](https://nodejs.org) |
-| abapGit | Required to install the RAP service — [abapgit.org](https://abapgit.org) |
 | RAP service installed | `ZSD_WMMCPSERVICE` deployed in your SAP system (see below) |
 
 > **EWM systems:** If your system has EWM (`/SCWM/` package present), use [sap-ewm-mcp](https://github.com/CodeOfHANA/sap-ewm-mcp) instead — it uses standard SAP APIs and requires no custom ABAP.
@@ -78,7 +79,7 @@ Unlike EWM, classic WM has no standard OData APIs. This package ships a complete
 
 ### Step 1 — Install the ABAP service (one-time per SAP system)
 
-The MCP server calls a custom RAP OData V4 service that must exist in your SAP system. Install it via abapGit — no transport file, no BASIS involvement. See [ABAP Service Installation](#abap-service-installation).
+The MCP server calls a custom RAP OData V4 service that must exist in your SAP system. See [ABAP Service Installation](#abap-service-installation).
 
 ### Step 2 — Configure your MCP client
 
@@ -86,17 +87,15 @@ Add the server to your MCP client config with your SAP credentials inline. See [
 
 No separate install or `.env` file needed — credentials go directly in the config.
 
-### Step 3 — Ask Claude a warehouse question
+### Step 3 — Ask a warehouse question
 
 ```
 "Show me all empty bins in warehouse 102"
 "Where is material TG0001 stored?"
 "What is the utilization of warehouse 102?"
-"Are there any negative stock quants I should investigate?"
-"Which bins haven't moved stock in over a year?"
+"Show me all open transfer orders"
+"Create a TO to move TG0001 from bin 0000000017 to bin 1-013"
 ```
-
-Claude calls the WM tools automatically. No transaction codes, no GUI.
 
 ---
 
@@ -109,8 +108,6 @@ Claude calls the WM tools automatically. No transaction codes, no GUI.
 | `SAP_USER` | ✅ | SAP username |
 | `SAP_PASSWORD` | ✅ | SAP password |
 | `SAP_INSECURE` | optional | Set `true` to skip TLS certificate validation (on-premise / self-signed certs) |
-
-The `.env` file is loaded from the **current working directory** when the server starts. Place it in the folder where you run `npx sap-wm-mcp` or `sap-wm-mcp`.
 
 ---
 
@@ -127,7 +124,7 @@ Two installation options — choose based on your use case.
 
 ### Option A — npx (recommended)
 
-No cloning or install required. Credentials are passed as environment variables directly in your MCP client config — no `.env` file needed.
+No cloning or install required. Credentials are passed as environment variables directly in your MCP client config.
 
 #### Claude Desktop
 
@@ -160,7 +157,7 @@ No cloning or install required. Credentials are passed as environment variables 
 
 **Step 3 — Restart Claude Desktop.**
 
-The sap-wm-mcp tools appear automatically in the tools panel. You'll see a hammer icon — click it to confirm the 18 WM tools are loaded.
+The sap-wm-mcp tools appear automatically in the tools panel. You'll see a hammer icon — click it to confirm the WM tools are loaded.
 
 > **Note:** If you already have other MCP servers configured, add `sap-wm-mcp` as an additional entry inside `"mcpServers"` — do not replace the whole file.
 
@@ -191,23 +188,17 @@ The sap-wm-mcp tools appear automatically in the tools panel. You'll see a hamme
 
 **Step 2 — Verify the tools are loaded:**
 
-Open Claude Code in that directory and run:
-
 ```
 /mcp
 ```
 
-You should see `sap-wm-mcp` listed as connected with 18 tools available.
-
-> **`.mcp.json` is project-scoped.** Add it to `.gitignore` — it contains credentials. Each team member configures their own copy with their own SAP user.
+> **`.mcp.json` is project-scoped.** Add it to `.gitignore` — it contains credentials.
 
 ---
 
 #### Cursor, Windsurf, and other MCP clients
 
-Any MCP client that supports **stdio transport** works. Use the same `env` block approach — pass credentials as environment variables, not via a `.env` file.
-
-Generic config pattern:
+Any MCP client that supports **stdio transport** works. Use the same `env` block approach.
 
 ```json
 {
@@ -231,17 +222,15 @@ Generic config pattern:
 
 ### Option B — Clone locally (for developers)
 
-Use this if you want to modify tools, add new capabilities, or contribute back.
-
 ```bash
 git clone https://github.com/CodeOfHANA/sap-wm-mcp.git
 cd sap-wm-mcp
 npm install
 cp .env.example .env    # fill in your SAP credentials
-node index.js           # server starts on stdio, ready to accept MCP connections
+node index.js
 ```
 
-Then point your MCP client at the local file instead of npx:
+Then point your MCP client at the local file:
 
 **Claude Desktop:**
 ```json
@@ -255,26 +244,9 @@ Then point your MCP client at the local file instead of npx:
 }
 ```
 
-**Claude Code `.mcp.json`:**
-```json
-{
-  "mcpServers": {
-    "sap-wm-mcp": {
-      "type": "stdio",
-      "command": "node",
-      "args": ["index.js"]
-    }
-  }
-}
-```
-
-The `.env` file in the project root is loaded automatically.
-
 ---
 
 ### Verify it's working
-
-Once configured and restarted, ask Claude any warehouse question:
 
 ```
 "Show me the status of bins in warehouse 102"
@@ -282,8 +254,6 @@ Once configured and restarted, ask Claude any warehouse question:
 "Where is material TG0001 stored?"
 "What is the overall utilization of warehouse 102?"
 ```
-
-If the tools are connected, Claude will call `get_bin_status`, `find_empty_bins`, or `get_stock_for_material` automatically — no prompting needed.
 
 For write operations:
 ```
@@ -294,8 +264,6 @@ For write operations:
 ---
 
 ### Example conversations
-
-Here are real prompts that work once the server is running:
 
 **Inventory queries**
 ```
@@ -308,30 +276,25 @@ Here are real prompts that work once the server is running:
 ```
 "Create a transfer order to move 5 ST of TG0001 from bin 0000000017 (type 999)
  to bin 1-014 (type 003), warehouse 102, movement type 999, plant 1010"
-
 "Confirm transfer order number 0000000654 in warehouse 102"
-
 "Confirm all transfer orders on storage unit 00000000001000000017"
 ```
 
-**Analytics and anomaly detection**
+**Analytics and shift management**
 ```
 "Run a shift health check for warehouse 102 — open TOs, negative stock, GR area, anomalies"
 "Which bins haven't moved stock in over 90 days?"
 "Are there any negative quants I need to investigate?"
-"Show me bins with inventory locks that haven't been resolved"
 "Which materials have more WM stock than IM stock?"
 "Find bins due for cycle counting"
 "Are there any fragmented quants that need consolidation TOs?"
 ```
 
-Claude will chain multiple tool calls automatically when needed — for example, it will call `find_empty_bins` first and then `create_transfer_order` in a single conversation turn.
-
 ---
 
 ## Tools Reference
 
-18 tools available across four capability areas.
+The npm package ships **18 tools** across four capability areas. The 9 tools below are open-sourced in this repository. Analytics, shift management, and anomaly detection tools are available in the published package.
 
 ---
 
@@ -412,17 +375,6 @@ List open (unconfirmed) Transfer Orders with their items, age, and bin details.
 
 ---
 
-#### `get_transfer_requirements`
-
-List open Transfer Requirements — the demand side before a TO is created. Flags TRs older than 30 days.
-
-| Parameter | Type | Required | Description |
-|---|---|---|---|
-| `warehouse` | string | ✅ | Warehouse number |
-| `top` | number | | Max records (default: `50`) |
-
----
-
 ### Write Operations
 
 #### `create_transfer_order`
@@ -446,7 +398,7 @@ Internally calls `L_TO_CREATE_SINGLE` via an RFC-enabled wrapper, isolated from 
 | `destBin` | string | ✅ | Destination bin |
 | `destStorageUnit` | string | | Destination storage unit (LENUM) — for SU-managed destination types |
 
-> **Note on SU-managed storage types:** Storage types with `LPTYP` set in table `LAGP` (e.g. type `001`) are storage-unit managed and require a `destStorageUnit` (LENUM) when used as the TO destination. Storage types with `LPTYP` blank (e.g. type `003`) do not.
+> **Note on SU-managed storage types:** Storage types with `LPTYP` set in `LAGP` (e.g. type `001`) require a `destStorageUnit` (LENUM) when used as the TO destination. Storage types with `LPTYP` blank (e.g. type `003`) do not.
 
 ---
 
@@ -463,7 +415,7 @@ Confirm an open Transfer Order by number — marks it as physically executed. Eq
 
 #### `confirm_transfer_order_su`
 
-Confirm all open Transfer Orders on a storage unit in one call — useful for SU-managed warehouses. Uses `L_TO_CONFIRM_SU` internally.
+Confirm all open Transfer Orders on a storage unit in one call — useful for SU-managed warehouses.
 
 | Parameter | Type | Required | Description |
 |---|---|---|---|
@@ -472,161 +424,29 @@ Confirm all open Transfer Orders on a storage unit in one call — useful for SU
 
 ---
 
-### Manager Analytics
+### Additional Tools (npm package)
 
-#### `get_wm_im_variance`
+The following tools are available in the published npm package and fully functional via `npx sap-wm-mcp`:
 
-Compare WM stock (LQUA) against IM stock (MARD) — surfaces discrepancies between warehouse management and inventory management views of the same material.
-
-| Parameter | Type | Required | Description |
-|---|---|---|---|
-| `warehouse` | string | ✅ | Warehouse number |
-| `plant` | string | ✅ | Plant |
-| `storageLocation` | string | ✅ | Storage location linked to the warehouse (e.g. `0002`) — required to avoid false zero-variance |
-| `top` | number | | Max materials to compare (default: `100`) |
-
----
-
-#### `get_cycle_count_candidates`
-
-Identify bins due for cycle counting — ordered by ABC class and days since last count. Excludes interim zones (999/998/902) which are never cycle-counted.
-
-| Parameter | Type | Required | Description |
-|---|---|---|---|
-| `warehouse` | string | ✅ | Warehouse number |
-| `storageType` | string | | Filter by storage type |
-| `excludeTypes` | array | | Storage types to exclude (default: `['999','998','902']`) |
-| `top` | number | | Max records (default: `100`) |
-
----
-
-### Shift Operations (Phase 1.7)
-
-#### `get_stock_aging`
-
-Find stock that has not moved in a given number of days — surface slow-moving or forgotten inventory.
-
-| Parameter | Type | Required | Description |
-|---|---|---|---|
-| `warehouse` | string | ✅ | Warehouse number |
-| `storageType` | string | | Filter by storage type |
-| `material` | string | | Filter by material |
-| `daysSinceLastMove` | number | | Age threshold in days (default: `90`) |
-| `top` | number | | Max records (default: `100`) |
-
----
-
-#### `get_negative_stock_report`
-
-Report all negative quants in the warehouse — with likely cause diagnosis (GI zone vs. regular storage).
-
-| Parameter | Type | Required | Description |
-|---|---|---|---|
-| `warehouse` | string | ✅ | Warehouse number |
-| `storageType` | string | | Filter by storage type |
-| `top` | number | | Max records fetched before filtering (default: `100`) |
-
----
-
-#### `get_goods_receipt_monitor`
-
-Check the GR staging area for pending putaway and list open inbound Transfer Requirements — the start-of-shift inbound check.
-
-| Parameter | Type | Required | Description |
-|---|---|---|---|
-| `warehouse` | string | ✅ | Warehouse number |
-| `grStorageType` | string | | GR area storage type (default: `902`) |
-
----
-
-### Anomaly Detection (Phase 1.8)
-
-#### `get_quant_fragmentation`
-
-Find bin+material combinations with more quants than the threshold — fragmented quants slow TO creation and should be consolidated.
-
-| Parameter | Type | Required | Description |
-|---|---|---|---|
-| `warehouse` | string | ✅ | Warehouse number |
-| `storageType` | string | | Filter by storage type |
-| `threshold` | number | | Minimum quant count to flag (default: `3`) |
-| `top` | number | | Max stock records to analyze (default: `200`) |
-
----
-
-#### `get_unresolved_su_negatives`
-
-Track persistent negative quants in SU zones (types 999/998) older than a configurable age — distinguish transient GI-before-confirm from genuine data integrity problems.
-
-| Parameter | Type | Required | Description |
-|---|---|---|---|
-| `warehouse` | string | ✅ | Warehouse number |
-| `storageType` | string | | Specific SU type (default: checks 999 and 998) |
-| `minAgeDays` | number | | Minimum age to surface (default: `7`) |
-| `top` | number | | Max records (default: `500`) |
-
----
-
-#### `get_inventory_anomalies`
-
-Detect bins stuck in mid-inventory-process state — empty bins with active locks, open count docs never posted, or orphaned lock codes. All anomaly types block normal TO processing for the affected bins.
-
-| Parameter | Type | Required | Description |
-|---|---|---|---|
-| `warehouse` | string | ✅ | Warehouse number |
-| `storageType` | string | | Filter by storage type |
-| `top` | number | | Max bins to scan (default: `300`) |
-
-Anomaly types detected:
-
-| Type | Severity | Description |
-|---|---|---|
-| `LOCK_ON_EMPTY_BIN` | MEDIUM | Bin is empty but inventory lock is still active — count doc needs posting or cancellation |
-| `UNCOMPLETED_COUNT` | HIGH | Bin has an open inventory document that was never posted — bin is blocked for TO movements |
-| `ORPHANED_LOCK` | LOW | Lock code active with no traceable document number |
+| Tool | Description |
+|---|---|
+| `get_transfer_requirements` | Open TRs — the demand side before a TO is created, flagged by age |
+| `get_wm_im_variance` | Compare WM stock (LQUA) vs IM stock (MARD) — surfaces reconciliation discrepancies |
+| `get_cycle_count_candidates` | Bins due for cycle counting, ordered by ABC class and days since last count |
+| `get_stock_aging` | Stock not moved in N days — surface slow movers and forgotten inventory |
+| `get_negative_stock_report` | All negative quants with likely cause diagnosis |
+| `get_goods_receipt_monitor` | GR staging area status and open inbound TRs — start-of-shift inbound check |
+| `get_quant_fragmentation` | Bin+material combinations with excessive quant count — consolidation candidates |
+| `get_unresolved_su_negatives` | Persistent negative quants in SU zones older than a configurable age |
+| `get_inventory_anomalies` | Bins stuck in mid-inventory state — empty bins with locks, open count docs, orphaned lock codes |
 
 ---
 
 ## ABAP Service Installation
 
-The MCP server calls a **custom RAP OData V4 service** (`ZSD_WMMCPSERVICE`) that must exist in your SAP system. Install it in three steps using abapGit — no transport file, no BASIS involvement.
+The MCP server calls a **custom RAP OData V4 service** (`ZSD_WMMCPSERVICE`) that must be installed in your SAP system.
 
-### Prerequisites
-
-- abapGit installed in your SAP system ([abapgit.org](https://abapgit.org) — free, open source, one-time install)
-- Package `ZWM_MCP` does not yet exist in the system
-- Internet access from your SAP application server (for GitHub clone), or use abapGit offline mode
-
-### Install steps
-
-1. In SAP GUI, run report `ZABAPGIT` (or transaction `/n/ZABAPGIT`)
-2. Click **New Online Repo**
-3. Enter URL: `https://github.com/CodeOfHANA/sap-wm-mcp`
-4. Package: `ZWM_MCP` (will be created automatically)
-5. Click **Pull** — all RAP objects are created and activated
-
-### Publish the service binding
-
-After Pull, the service binding `ZSB_WMMCPSERVICE_ODATA4_UI` must be published:
-
-**Option A — ADT (Eclipse):**
-Navigate to `ZSB_WMMCPSERVICE_ODATA4_UI` in Project Explorer → right-click → **Publish Local Service Endpoint**
-
-**Option B — SAP GUI:**
-Run `/IWFND/V4_ADMIN` → **Add Service Group** → search `ZSD_WMMCPSERVICE` → assign to system alias `LOCAL`
-
-**Option C — Auto-exposure (no action needed):**
-On systems where the client `CCCATEGORY = C` (customizing client), the service is automatically reachable via `/IWBEP/ALL` without explicit publication. This is the most common case for development/sandbox systems.
-
-### Verify the service
-
-```
-GET https://<your-host>:44300/sap/opu/odata4/iwbep/all/srvd/sap/zsd_wmmcpservice/0001/WMStorageBin?$top=3
-Authorization: Basic <base64>
-sap-client: 100
-```
-
-Expect HTTP 200 with bin data.
+The ABAP source is not included in this public repository. To obtain the ABAP package for installation in your system, open an issue or reach out via [GitHub](https://github.com/CodeOfHANA/sap-wm-mcp/issues).
 
 ### What gets installed
 
@@ -650,6 +470,18 @@ Expect HTTP 200 with bin data.
 | `ZA_WMCONFIRMTOSU` | Structure | Parameter type for ConfirmTransferOrderSU action |
 | `ZSD_WMMCPSERVICE` | Service Def | OData V4 service definition (7 entity sets) |
 | `ZSB_WMMCPSERVICE_ODATA4_UI` | Service Binding | OData V4 UI binding |
+
+### Verify the service
+
+Once installed, verify the service is reachable:
+
+```
+GET https://<your-host>:44300/sap/opu/odata4/iwbep/all/srvd/sap/zsd_wmmcpservice/0001/WMStorageBin?$top=3
+Authorization: Basic <base64>
+sap-client: 100
+```
+
+Expect HTTP 200 with bin data.
 
 ---
 
@@ -688,25 +520,12 @@ The solution: an RFC-enabled wrapper FM (`ZWM_TO_CREATE`) called via `DESTINATIO
 ### Service URL pattern
 
 ```
-/sap/opu/odata4/iwbep/all/srvd/sap/{service_name}/{version}/{entity_set}
-```
-
-For this service:
-```
-/sap/opu/odata4/iwbep/all/srvd/sap/zsd_wmmcpservice/0001/WMStorageBin
-/sap/opu/odata4/iwbep/all/srvd/sap/zsd_wmmcpservice/0001/WMWarehouseStock
-/sap/opu/odata4/iwbep/all/srvd/sap/zsd_wmmcpservice/0001/WMTransferOrder
-/sap/opu/odata4/iwbep/all/srvd/sap/zsd_wmmcpservice/0001/WMTransferOrderItem
-/sap/opu/odata4/iwbep/all/srvd/sap/zsd_wmmcpservice/0001/WMTransferRequirement
-/sap/opu/odata4/iwbep/all/srvd/sap/zsd_wmmcpservice/0001/WMIMStock
-/sap/opu/odata4/iwbep/all/srvd/sap/zsd_wmmcpservice/0001/WMCycleCountBin
+/sap/opu/odata4/iwbep/all/srvd/sap/zsd_wmmcpservice/0001/{EntitySet}
 ```
 
 ---
 
 ## Classic WM Tables
-
-Reference for the SAP standard tables behind this service.
 
 | Table | Description | Key Fields |
 |---|---|---|
@@ -714,7 +533,7 @@ Reference for the SAP standard tables behind this service.
 | `LQUA` | Quants (Stock per Bin) | `LGNUM`, `LGTYP`, `LGPLA`, `LQNUM`, `MATNR` — `GESME` (total stock), `EINME` (in-transfer qty), `BDATU` (last movement date) |
 | `LTAK` | Transfer Order Header | `LGNUM`, `TANUM` — `BWLVS` (movement type), `BDATU` (creation date). No STATUS field — derive from LTAP |
 | `LTAP` | Transfer Order Items | `LGNUM`, `TANUM`, `TAPOS` — `NSOLM` (planned qty), `NISTM` (confirmed qty), `VLTYP`/`VLPLA` (source), `NLTYP`/`NLPLA` (destination) |
-| `LTBK` | Transfer Requirement Header | `LGNUM`, `TBNUM` — `STATU` (`' '`=open, `'B'`=partial, `'T'`=TO created, `'E'`=complete), `BWLVS` (movement type) |
+| `LTBK` | Transfer Requirement Header | `LGNUM`, `TBNUM` — `STATU` (`' '`=open, `'B'`=partial, `'T'`=TO created, `'E'`=complete) |
 | `LTBP` | Transfer Requirement Items | `LGNUM`, `TBNUM`, `TBPOS` — material, qty, source bin |
 | `MARD` | IM Stock per Storage Location | `MATNR`, `WERKS`, `LGORT` — `LABST` (unrestricted stock) |
 
@@ -730,7 +549,7 @@ Reference for the SAP standard tables behind this service.
 git clone https://github.com/CodeOfHANA/sap-wm-mcp.git
 cd sap-wm-mcp
 npm install
-cp .env.example .env       # fill in your SAP connection details
+cp .env.example .env
 node index.js
 ```
 
@@ -738,7 +557,7 @@ node index.js
 
 ```
 sap-wm-mcp/
-├── index.js                          ← MCP server — all 18 tools registered
+├── index.js                          ← MCP server — all tools registered
 ├── lib/
 │   ├── s4hClient.js                  ← s4hGet + s4hPost (OData V4 HTTP client)
 │   └── sanitize.js                   ← esc() — OData filter injection prevention
@@ -749,22 +568,9 @@ sap-wm-mcp/
 │   ├── binUtilization.js             ← get_bin_utilization
 │   ├── stockByType.js                ← get_stock_by_type
 │   ├── openTransferOrders.js         ← get_open_transfer_orders
-│   ├── transferRequirements.js       ← get_transfer_requirements
 │   ├── createTransferOrder.js        ← create_transfer_order
 │   ├── confirmTransferOrder.js       ← confirm_transfer_order
-│   ├── confirmTransferOrderSU.js     ← confirm_transfer_order_su
-│   ├── wmImVariance.js               ← get_wm_im_variance
-│   ├── cycleCountCandidates.js       ← get_cycle_count_candidates
-│   ├── stockAging.js                 ← get_stock_aging
-│   ├── negativeStock.js              ← get_negative_stock_report
-│   ├── goodsReceiptMonitor.js        ← get_goods_receipt_monitor
-│   ├── quantFragmentation.js         ← get_quant_fragmentation
-│   ├── unresolvedSuNegatives.js      ← get_unresolved_su_negatives
-│   └── inventoryAnomalies.js         ← get_inventory_anomalies
-├── abap/
-│   └── src/                          ← All ABAP objects as abapGit files
-├── docs/
-│   └── pre-production-checklist.md   ← ABAP authz, TLS, transport requirements before go-live
+│   └── confirmTransferOrderSU.js     ← confirm_transfer_order_su
 ├── .env.example
 └── package.json
 ```
@@ -775,13 +581,12 @@ sap-wm-mcp/
 2. Always use `data.value ?? []` (never bare `data.value`)
 3. Always return `truncated: rows.length === top` on paginated responses
 4. Import and register in `index.js` using `server.tool(name, description, schema, handler)`
-5. If you need a new RAP entity or action, add the CDS view + behavior to `abap/src/` and deploy via abapGit
 
 ### Companion project
 
 [sap-ewm-mcp](https://github.com/CodeOfHANA/sap-ewm-mcp) — the same MCP interface for SAP Extended Warehouse Management. Uses only standard SAP OData APIs, no custom ABAP required.
 
-Running both side-by-side shows the contrast directly: same tools, same questions to Claude — EWM uses plug-and-play APIs, WM required building the socket first.
+Running both side-by-side shows the contrast directly: same tools, same questions — EWM uses plug-and-play APIs, WM required building the socket first.
 
 ---
 
@@ -790,7 +595,7 @@ Running both side-by-side shows the contrast directly: same tools, same question
 | Phase | Status | Description |
 |---|---|---|
 | Phase 0 — RAP Service | ✅ Complete | Custom OData V4 service with 7 entity sets over classic WM tables |
-| Phase 1 — Local MCP | ✅ Complete | All 18 tools working, security hardened, published to npm |
+| Phase 1 — Local MCP | ✅ Complete | 18 tools working, security hardened, published to npm |
 | Phase 2 — BTP CF | 🔜 Planned | Deploy to SAP BTP Cloud Foundry with SSE transport + XSUAA + Cloud Connector |
 | Phase 3 — Joule Agent | 💡 Future | Native Joule Studio agent using the same RAP service |
 

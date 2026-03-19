@@ -11,3 +11,16 @@ CLAUDE.md
 # Project documentation — internal implementation notes, not part of the published package
 docs/
 
+# Analytics and shift operations tools — not open-sourced (available in npm package)
+tools/wmImVariance.js
+tools/cycleCountCandidates.js
+tools/stockAging.js
+tools/negativeStock.js
+tools/goodsReceiptMonitor.js
+tools/quantFragmentation.js
+tools/unresolvedSuNegatives.js
+tools/inventoryAnomalies.js
+tools/transferRequirements.js
+
+# ABAP RAP service source — not open-sourced
+abap/

@@ -1,8 +1,0 @@
-unmanaged implementation in class ZBP_R_WMTransferOrder unique;
-
-define behavior for ZR_WMTransferOrder alias TransferOrder
-{
-  static action CreateTransferOrder parameter ZA_WMCreateTOParam result [1] $self;
-  action ConfirmTransferOrder result [1] $self;
-  static action ConfirmTransferOrderSU parameter ZA_WMConfirmTOSUParam result [1] $self;
-}
