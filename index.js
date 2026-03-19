@@ -11,6 +11,14 @@ import { getBinUtilization } from './tools/binUtilization.js';
 import { createTransferOrder } from './tools/createTransferOrder.js';
 import { confirmTransferOrder } from './tools/confirmTransferOrder.js';
 import { confirmTransferOrderSU } from './tools/confirmTransferOrderSU.js';
+import { getOpenTransferOrders } from './tools/openTransferOrders.js';
+import { getStockByType } from './tools/stockByType.js';
+import { getTransferRequirements } from './tools/transferRequirements.js';
+import { getWMIMVariance } from './tools/wmImVariance.js';
+import { getCycleCountCandidates } from './tools/cycleCountCandidates.js';
+import { getStockAging } from './tools/stockAging.js';
+import { getNegativeStock } from './tools/negativeStock.js';
+import { getGoodsReceiptMonitor } from './tools/goodsReceiptMonitor.js';
 
 const server = new McpServer({ name: 'sap-wm-mcp', version: '0.1.0' });
 
@@ -149,6 +157,165 @@ server.tool(
   async (params) => {
     try {
       const result = await confirmTransferOrderSU(params);
+      return { content: [{ type: 'text', text: JSON.stringify(result, null, 2) }] };
+    } catch (err) {
+      return { content: [{ type: 'text', text: `Error: ${err.message}` }], isError: true };
+    }
+  }
+);
+
+// Tool 8 — get_open_transfer_orders
+server.tool(
+  'get_open_transfer_orders',
+  'Get open (unconfirmed) classic WM Transfer Orders in S/4HANA — optionally filter by bin, storage type, or material. Returns TO header + item details including source/dest bins and open quantities.',
+  {
+    warehouse:   z.string().describe('Warehouse number e.g. 102'),
+    storageType: z.string().optional().describe('Filter by source or destination storage type e.g. 999'),
+    bin:         z.string().optional().describe('Filter by source or destination bin e.g. AUFNAHME'),
+    material:    z.string().optional().describe('Filter by material number e.g. TG0001'),
+    top:         z.number().optional().default(50).describe('Max TO headers to return')
+  },
+  async (params) => {
+    try {
+      const result = await getOpenTransferOrders(params);
+      return { content: [{ type: 'text', text: JSON.stringify(result, null, 2) }] };
+    } catch (err) {
+      return { content: [{ type: 'text', text: `Error: ${err.message}` }], isError: true };
+    }
+  }
+);
+
+// Tool 9 — get_stock_by_type
+server.tool(
+  'get_stock_by_type',
+  'Get all warehouse stock in a classic WM storage type — shows every occupied bin, material and quantity. Equivalent to SAP LX02 filtered by storage type.',
+  {
+    warehouse:   z.string().describe('Warehouse number e.g. 102'),
+    storageType: z.string().optional().describe('Storage type e.g. 001. Omit to see all types.'),
+    bin:         z.string().optional().describe('Narrow to a specific bin within the type'),
+    top:         z.number().optional().default(100).describe('Max records to return')
+  },
+  async (params) => {
+    try {
+      const result = await getStockByType(params);
+      return { content: [{ type: 'text', text: JSON.stringify(result, null, 2) }] };
+    } catch (err) {
+      return { content: [{ type: 'text', text: `Error: ${err.message}` }], isError: true };
+    }
+  }
+);
+
+// Tool 10 — get_transfer_requirements
+server.tool(
+  'get_transfer_requirements',
+  'Get open Transfer Requirements (TRs) in classic WM — these are the demand documents that drive TO creation. Shows what work is pending and whether a TO has already been assigned. Equivalent to SAP LB10 / TR monitor.',
+  {
+    warehouse:   z.string().describe('Warehouse number e.g. 102'),
+    status:      z.enum(['open', 'partial', 'completed']).optional().describe('TR status filter. Defaults to open + partial.'),
+    material:    z.string().optional().describe('Filter by material number e.g. TG0001'),
+    storageType: z.string().optional().describe('Filter by source or destination storage type'),
+    top:         z.number().optional().default(50).describe('Max records to return')
+  },
+  async (params) => {
+    try {
+      const result = await getTransferRequirements(params);
+      return { content: [{ type: 'text', text: JSON.stringify(result, null, 2) }] };
+    } catch (err) {
+      return { content: [{ type: 'text', text: `Error: ${err.message}` }], isError: true };
+    }
+  }
+);
+
+// Tool 11 — get_wm_im_variance
+server.tool(
+  'get_wm_im_variance',
+  'Compare WM bin stock (LQUA) against IM unrestricted stock (MARD) to surface discrepancies — the classic WM LX23 reconciliation check. Returns materials where WM and MM stock are out of sync.',
+  {
+    warehouse: z.string().describe('Warehouse number e.g. 102'),
+    plant:     z.string().describe('Plant e.g. 1010'),
+    material:  z.string().optional().describe('Narrow to a specific material'),
+    threshold: z.number().optional().default(0).describe('Ignore variances smaller than this quantity')
+  },
+  async (params) => {
+    try {
+      const result = await getWMIMVariance(params);
+      return { content: [{ type: 'text', text: JSON.stringify(result, null, 2) }] };
+    } catch (err) {
+      return { content: [{ type: 'text', text: `Error: ${err.message}` }], isError: true };
+    }
+  }
+);
+
+// Tool 12 — get_cycle_count_candidates
+server.tool(
+  'get_cycle_count_candidates',
+  'Find occupied storage bins in classic WM that are due for a cycle count — bins never counted or not counted within the specified number of days. Equivalent to SAP LX26 cycle count planning.',
+  {
+    warehouse:          z.string().describe('Warehouse number e.g. 102'),
+    storageType:        z.string().optional().describe('Limit to a specific storage type e.g. 001'),
+    daysSinceLastCount: z.number().optional().default(180).describe('Flag bins not counted within this many days (default 180)'),
+    top:                z.number().optional().default(100).describe('Max bins to return')
+  },
+  async (params) => {
+    try {
+      const result = await getCycleCountCandidates(params);
+      return { content: [{ type: 'text', text: JSON.stringify(result, null, 2) }] };
+    } catch (err) {
+      return { content: [{ type: 'text', text: `Error: ${err.message}` }], isError: true };
+    }
+  }
+);
+
+// Tool 13 — get_stock_aging
+server.tool(
+  'get_stock_aging',
+  'Find warehouse stock that has not moved in X days — identifies slow movers, dead stock, and forgotten bins. Sorted from oldest to most recent last movement.',
+  {
+    warehouse:        z.string().describe('Warehouse number e.g. 102'),
+    storageType:      z.string().optional().describe('Narrow to a specific storage type'),
+    material:         z.string().optional().describe('Narrow to a specific material'),
+    daysSinceLastMove: z.number().optional().default(90).describe('Flag stock not moved in this many days (default 90)'),
+    top:              z.number().optional().default(100).describe('Max quants to scan')
+  },
+  async (params) => {
+    try {
+      const result = await getStockAging(params);
+      return { content: [{ type: 'text', text: JSON.stringify(result, null, 2) }] };
+    } catch (err) {
+      return { content: [{ type: 'text', text: `Error: ${err.message}` }], isError: true };
+    }
+  }
+);
+
+// Tool 14 — get_negative_stock_report
+server.tool(
+  'get_negative_stock_report',
+  'Surface all bins with negative WM stock quantities — typically caused by GI postings before TO confirmation in SU/GI zones. Returns likely cause and severity.',
+  {
+    warehouse:   z.string().describe('Warehouse number e.g. 102'),
+    storageType: z.string().optional().describe('Narrow to a specific storage type e.g. 999')
+  },
+  async (params) => {
+    try {
+      const result = await getNegativeStock(params);
+      return { content: [{ type: 'text', text: JSON.stringify(result, null, 2) }] };
+    } catch (err) {
+      return { content: [{ type: 'text', text: `Error: ${err.message}` }], isError: true };
+    }
+  }
+);
+
+// Tool 15 — get_goods_receipt_monitor
+server.tool(
+  'get_goods_receipt_monitor',
+  'Monitor inbound goods receipts in classic WM — shows stock sitting in the GR area awaiting putaway, plus any open inbound transfer requirements. Equivalent to checking WE-ZONE + LB10.',
+  {
+    warehouse:     z.string().describe('Warehouse number e.g. 102'),
+    grStorageType: z.string().optional().default('902').describe('GR area storage type (default 902 = WE-ZONE)')
+  },
+  async (params) => {
+    try {
+      const result = await getGoodsReceiptMonitor(params);
       return { content: [{ type: 'text', text: JSON.stringify(result, null, 2) }] };
     } catch (err) {
       return { content: [{ type: 'text', text: `Error: ${err.message}` }], isError: true };
