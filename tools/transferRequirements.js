@@ -2,7 +2,7 @@ import { s4hGet } from '../lib/s4hClient.js';
 
 const BASE = `/sap/opu/odata4/iwbep/all/srvd/sap/zsd_wmmcpservice/0001/WMTransferRequirement`;
 
-const STATUS_LABEL = { ' ': 'open', '': 'open', 'B': 'partial', 'C': 'completed' };
+const STATUS_LABEL = { ' ': 'open', '': 'open', 'B': 'partial', 'T': 'to-created', 'C': 'completed', 'E': 'completed' };
 
 export async function getTransferRequirements({ warehouse, status, material, storageType, top = 50 }) {
   const filters = [`WarehouseNumber eq '${warehouse}'`];
@@ -11,8 +11,9 @@ export async function getTransferRequirements({ warehouse, status, material, sto
 
   if (status === 'open')           filters.push(`Status eq ' '`);
   else if (status === 'partial')   filters.push(`Status eq 'B'`);
-  else if (status === 'completed') filters.push(`Status eq 'C'`);
-  else                             filters.push(`(Status eq ' ' or Status eq 'B')`);
+  else if (status === 'to-created') filters.push(`Status eq 'T'`);
+  else if (status === 'completed') filters.push(`(Status eq 'C' or Status eq 'E')`);
+  else                             filters.push(`(Status eq ' ' or Status eq 'B' or Status eq 'T')`);
 
   const path = `${BASE}?$filter=${encodeURIComponent(filters.join(' and '))}&$top=${top}`;
   const data = await s4hGet(path);
@@ -23,7 +24,7 @@ export async function getTransferRequirements({ warehouse, status, material, sto
   return {
     count: rows.length,
     warehouse,
-    filters: { status: status ?? 'open+partial', material: material ?? 'all', storageType: storageType ?? 'all' },
+    filters: { status: status ?? 'open+partial+to-created', material: material ?? 'all', storageType: storageType ?? 'all' },
     requirements: rows.map(r => {
       const daysSinceCreation = r.CreatedDate
         ? Math.floor((today - new Date(r.CreatedDate)) / 86400000)

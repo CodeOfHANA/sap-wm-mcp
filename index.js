@@ -19,6 +19,9 @@ import { getCycleCountCandidates } from './tools/cycleCountCandidates.js';
 import { getStockAging } from './tools/stockAging.js';
 import { getNegativeStock } from './tools/negativeStock.js';
 import { getGoodsReceiptMonitor } from './tools/goodsReceiptMonitor.js';
+import { getQuantFragmentation } from './tools/quantFragmentation.js';
+import { getUnresolvedSuNegatives } from './tools/unresolvedSuNegatives.js';
+import { getInventoryAnomalies } from './tools/inventoryAnomalies.js';
 
 const server = new McpServer({ name: 'sap-wm-mcp', version: '0.1.0' });
 
@@ -211,7 +214,7 @@ server.tool(
   'Get open Transfer Requirements (TRs) in classic WM — these are the demand documents that drive TO creation. Shows what work is pending and whether a TO has already been assigned. Equivalent to SAP LB10 / TR monitor.',
   {
     warehouse:   z.string().describe('Warehouse number e.g. 102'),
-    status:      z.enum(['open', 'partial', 'completed']).optional().describe('TR status filter. Defaults to open + partial.'),
+    status:      z.enum(['open', 'partial', 'to-created', 'completed']).optional().describe('TR status filter. Defaults to open + partial + to-created. Use to-created to see TRs where a TO exists but is not yet confirmed.'),
     material:    z.string().optional().describe('Filter by material number e.g. TG0001'),
     storageType: z.string().optional().describe('Filter by source or destination storage type'),
     top:         z.number().optional().default(50).describe('Max records to return')
@@ -316,6 +319,64 @@ server.tool(
   async (params) => {
     try {
       const result = await getGoodsReceiptMonitor(params);
+      return { content: [{ type: 'text', text: JSON.stringify(result, null, 2) }] };
+    } catch (err) {
+      return { content: [{ type: 'text', text: `Error: ${err.message}` }], isError: true };
+    }
+  }
+);
+
+// Tool 16 — get_quant_fragmentation
+server.tool(
+  'get_quant_fragmentation',
+  'Find bin+material combinations with excessive quant counts in classic WM — a leading indicator of TO performance issues and picking errors. Bins with many quants for the same material benefit from consolidation TOs.',
+  {
+    warehouse:   z.string().describe('Warehouse number e.g. 102'),
+    storageType: z.string().optional().describe('Limit to a specific storage type e.g. 003'),
+    threshold:   z.number().optional().default(3).describe('Flag bin+material combos with this many quants or more (default 3)'),
+    top:         z.number().optional().default(200).describe('Max stock records to scan')
+  },
+  async (params) => {
+    try {
+      const result = await getQuantFragmentation(params);
+      return { content: [{ type: 'text', text: JSON.stringify(result, null, 2) }] };
+    } catch (err) {
+      return { content: [{ type: 'text', text: `Error: ${err.message}` }], isError: true };
+    }
+  }
+);
+
+// Tool 17 — get_unresolved_su_negatives
+server.tool(
+  'get_unresolved_su_negatives',
+  'Find persistent negative quants in SU/GI interim zones (types 999, 998) that are older than a threshold — distinguishes fresh GI negatives (expected, transient) from aged negatives (unconfirmed TOs or data integrity issues). Includes severity rating and recommended action.',
+  {
+    warehouse:   z.string().describe('Warehouse number e.g. 102'),
+    storageType: z.string().optional().describe('Specific zone type to check e.g. 999. Defaults to 999 + 998.'),
+    minAgeDays:  z.number().optional().default(7).describe('Only show negatives older than this many days (default 7). Set to 0 to see all.'),
+    top:         z.number().optional().default(500).describe('Max stock records to scan')
+  },
+  async (params) => {
+    try {
+      const result = await getUnresolvedSuNegatives(params);
+      return { content: [{ type: 'text', text: JSON.stringify(result, null, 2) }] };
+    } catch (err) {
+      return { content: [{ type: 'text', text: `Error: ${err.message}` }], isError: true };
+    }
+  }
+);
+
+// Tool 18 — get_inventory_anomalies
+server.tool(
+  'get_inventory_anomalies',
+  'Detect bins stuck in mid-inventory-process state in classic WM — empty bins still carrying an inventory lock, open count documents that were never posted, and orphaned lock codes. These block TO processing until resolved.',
+  {
+    warehouse:   z.string().describe('Warehouse number e.g. 102'),
+    storageType: z.string().optional().describe('Limit to a specific storage type e.g. 001')
+  },
+  async (params) => {
+    try {
+      const result = await getInventoryAnomalies(params);
       return { content: [{ type: 'text', text: JSON.stringify(result, null, 2) }] };
     } catch (err) {
       return { content: [{ type: 'text', text: `Error: ${err.message}` }], isError: true };
