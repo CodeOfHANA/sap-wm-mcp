@@ -23,7 +23,7 @@ import { getQuantFragmentation } from './tools/quantFragmentation.js';
 import { getUnresolvedSuNegatives } from './tools/unresolvedSuNegatives.js';
 import { getInventoryAnomalies } from './tools/inventoryAnomalies.js';
 
-const server = new McpServer({ name: 'sap-wm-mcp', version: '0.1.0' });
+const server = new McpServer({ name: 'sap-wm-mcp', version: '0.2.0' });
 
 // Tool 1 — get_bin_status
 server.tool(
@@ -234,10 +234,11 @@ server.tool(
   'get_wm_im_variance',
   'Compare WM bin stock (LQUA) against IM unrestricted stock (MARD) to surface discrepancies — the classic WM LX23 reconciliation check. Returns materials where WM and MM stock are out of sync.',
   {
-    warehouse: z.string().describe('Warehouse number e.g. 102'),
-    plant:     z.string().describe('Plant e.g. 1010'),
-    material:  z.string().optional().describe('Narrow to a specific material'),
-    threshold: z.number().optional().default(0).describe('Ignore variances smaller than this quantity')
+    warehouse:       z.string().describe('Warehouse number e.g. 102'),
+    plant:           z.string().describe('Plant e.g. 1010'),
+    storageLocation: z.string().optional().describe('Storage location (LGORT) linked to this warehouse e.g. 0002 — required for accurate results, otherwise MARD returns all plant stock'),
+    material:        z.string().optional().describe('Narrow to a specific material'),
+    threshold:       z.number().optional().default(0).describe('Ignore variances smaller than this quantity')
   },
   async (params) => {
     try {
