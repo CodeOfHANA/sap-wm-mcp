@@ -5,7 +5,7 @@ const NS   = `com.sap.gateway.srvd.zsd_wmmcpservice.v0001`;
 
 export async function createTransferOrder({
   warehouse, movementType, material, plant,
-  quantity, unitOfMeasure,
+  quantity, unitOfMeasure = '',
   sourceType = '', sourceBin = '', sourceStorageUnit = '',
   destType, destBin, destStorageUnit = ''
 }) {

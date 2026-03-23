@@ -471,6 +471,12 @@ The ABAP source is not included in this public repository. To obtain the ABAP pa
 | `ZSD_WMMCPSERVICE` | Service Def | OData V4 service definition (7 entity sets) |
 | `ZSB_WMMCPSERVICE_ODATA4_UI` | Service Binding | OData V4 UI binding |
 
+### abapGit compatibility
+
+If you are installing these objects via abapGit, be aware of a version compatibility issue with BDEF serialization. Some abapGit releases reference a `SYNTAX_CONFIGURATION` field in the BDEF metadata structure (`CL_BLUE_SOURCE_OBJECT_DATA=>TY_OBJECT_DATA-METADATA`) that was introduced in a later S/4HANA kernel/SP level. If your system is on an older kernel and you hit a short dump (`ASSERTION_FAILED` in `zcl_abapgit_object_bdef→clear_field`) when pulling this package, downgrade your abapGit standalone to a version compatible with your kernel level.
+
+This is a known abapGit issue — not specific to this package. The ABAP objects in this repo are plain source files and are portable across all kernel versions.
+
 ### Verify the service
 
 Once installed, verify the service is reachable:

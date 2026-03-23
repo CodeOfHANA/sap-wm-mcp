@@ -113,7 +113,7 @@ server.tool(
     material:       z.string().describe('Material number e.g. TG0001'),
     plant:          z.string().describe('Plant e.g. 1710'),
     quantity:       z.number().describe('Quantity to move'),
-    unitOfMeasure:  z.string().describe('Unit of measure e.g. ST, KG'),
+    unitOfMeasure:  z.string().optional().default('').describe('Unit of measure — leave empty to use material base UOM (recommended)'),
     sourceType:         z.string().optional().default('').describe('Source storage type e.g. 001'),
     sourceBin:          z.string().optional().default('').describe('Source bin e.g. 01-02-01'),
     sourceStorageUnit:  z.string().optional().default('').describe('Source storage unit (LENUM) — required for SU-managed types e.g. 00000000001000000017'),
