@@ -26,6 +26,7 @@ The **npm package** ships 18 tools covering core operations, analytics, shift ma
 - [MCP Client Setup](#mcp-client-setup)
   - [Option A — npx (Claude Desktop, Claude Code, Cursor)](#option-a--npx-recommended)
   - [Option B — Clone locally](#option-b--clone-locally-for-developers)
+  - [Windows troubleshooting (Claude Code)](#windows-claude-code)
   - [Verify it's working](#verify-its-working)
   - [Example conversations](#example-conversations)
 - [Tools Reference](#tools-reference)
@@ -194,6 +195,75 @@ The sap-wm-mcp tools appear automatically in the tools panel. You'll see a hamme
 
 > **`.mcp.json` is project-scoped.** Add it to `.gitignore` — it contains credentials.
 
+> **Windows users:** If the server doesn't appear after restart, see [Windows troubleshooting](#windows-claude-code) below.
+
+---
+
+#### Claude Code — Windows
+
+On Windows, Claude Code may silently fail to launch `npx` or `node` directly (known issue with process spawning). If the server doesn't appear in `/mcp`, use this pattern instead.
+
+**Step 1 — Create a wrapper script** (requires [Git for Windows](https://gitforwindows.org)):
+
+Save as `scripts/run-sap-wm-mcp.sh` in your project:
+
+```bash
+#!/bin/bash
+SCRIPT_DIR="$(cd "${BASH_SOURCE[0]%/*}" && pwd)"
+ROOT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
+
+exec npx --prefix "$ROOT_DIR" sap-wm-mcp
+```
+
+Or to load credentials from a `.env` file instead of inline in `.mcp.json`:
+
+```bash
+#!/bin/bash
+SCRIPT_DIR="$(cd "${BASH_SOURCE[0]%/*}" && pwd)"
+ENV_FILE="$(cd "$SCRIPT_DIR/.." && pwd)/.env"
+
+if [ -f "$ENV_FILE" ]; then
+  set -a; source "$ENV_FILE"; set +a
+else
+  echo "ERROR: .env not found" >&2; exit 1
+fi
+
+exec npx sap-wm-mcp
+```
+
+**Step 2 — Update `.mcp.json`** to use `bash.exe` as the command:
+
+```json
+{
+  "mcpServers": {
+    "sap-wm-mcp": {
+      "command": "C:/Program Files/Git/usr/bin/bash.exe",
+      "args": [
+        "C:/absolute/path/to/your/project/scripts/run-sap-wm-mcp.sh"
+      ]
+    }
+  }
+}
+```
+
+Use an absolute path with forward slashes. No `env` block needed if credentials are in `.env`.
+
+**Step 3 — Skip the approval dialog** (optional but recommended):
+
+Create `.claude/settings.local.json` in your project root:
+
+```json
+{
+  "enableAllProjectMcpServers": true
+}
+```
+
+This prevents a silently-dismissed approval prompt from blocking the server on every restart.
+
+**Step 4 — Restart Claude Code.** Run `/mcp` to verify the tools are loaded.
+
+> **Note:** If the server was previously rejected in the approval dialog, run `claude mcp reset-project-choices` before restarting.
+
 ---
 
 #### Cursor, Windsurf, and other MCP clients
@@ -232,7 +302,7 @@ node index.js
 
 Then point your MCP client at the local file:
 
-**Claude Desktop:**
+**Claude Desktop / macOS / Linux:**
 ```json
 {
   "mcpServers": {
@@ -243,6 +313,8 @@ Then point your MCP client at the local file:
   }
 }
 ```
+
+**Claude Code on Windows** — use the bash wrapper pattern (see [Windows troubleshooting](#windows-claude-code)) with `exec node "$ROOT_DIR/index.js"` in the script instead of `npx`.
 
 ---
 
