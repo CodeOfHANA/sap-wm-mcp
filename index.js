@@ -2,7 +2,10 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { z } from 'zod';
-import 'dotenv/config';
+import dotenv from 'dotenv';
+import { fileURLToPath } from 'url';
+import { dirname, join } from 'path';
+dotenv.config({ path: join(dirname(fileURLToPath(import.meta.url)), '.env') });
 
 import { getBinStatus } from './tools/binStatus.js';
 import { getStockForMaterial } from './tools/stockByMaterial.js';
