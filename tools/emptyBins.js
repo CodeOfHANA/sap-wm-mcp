@@ -3,12 +3,13 @@ import { esc } from '../lib/sanitize.js';
 
 const BASE = `/sap/opu/odata4/iwbep/all/srvd/sap/zsd_wmmcpservice/0001/WMStorageBin`;
 
-export async function findEmptyBins({ warehouse, storageType, top = 50 }) {
+export async function findEmptyBins({ warehouse, storageType, binType, top = 50 }) {
   const filters = [
     `WarehouseNumber eq '${esc(warehouse)}'`,
     `IsEmpty eq true`
   ];
   if (storageType) filters.push(`StorageType eq '${esc(storageType)}'`);
+  if (binType)     filters.push(`StorageBinType eq '${esc(binType)}'`);
 
   const path = `${BASE}?$filter=${encodeURIComponent(filters.join(' and '))}&$top=${top}`;
   const data = await s4hGet(path);
@@ -19,6 +20,7 @@ export async function findEmptyBins({ warehouse, storageType, top = 50 }) {
     truncated: bins.length === top,
     warehouse,
     storageType: storageType ?? 'all',
+    binType:     binType ?? 'all',
     emptyBins: bins.map(b => ({
       bin:               b.StorageBin,
       storageType:       b.StorageType,

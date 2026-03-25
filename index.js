@@ -30,7 +30,7 @@ import { cancelTransferOrder } from './tools/cancelTransferOrder.js';
 import { getReplenishmentNeeds } from './tools/replenishmentNeeds.js';
 import { getInterimZoneAnomalies } from './tools/interimZoneAnomalies.js';
 
-const server = new McpServer({ name: 'sap-wm-mcp', version: '0.2.8' });
+const server = new McpServer({ name: 'sap-wm-mcp', version: '0.2.9' });
 
 // Tool 1 — get_bin_status
 server.tool(
@@ -75,11 +75,12 @@ server.tool(
 // Tool 3 — find_empty_bins
 server.tool(
   'find_empty_bins',
-  'Find all empty storage bins in a classic WM warehouse, optionally filtered by storage type',
+  'Find all empty storage bins in a classic WM warehouse, optionally filtered by storage type or bin type',
   {
-    warehouse: z.string().describe('Warehouse number e.g. 102'),
+    warehouse:   z.string().describe('Warehouse number e.g. 102'),
     storageType: z.string().optional().describe('Storage type to filter e.g. 001'),
-    top: z.number().optional().default(50).describe('Max records to return')
+    binType:     z.string().optional().describe('Bin type to filter e.g. E1, E2 — use when destination bin must match a specific storage unit type'),
+    top:         z.number().optional().default(50).describe('Max records to return')
   },
   async (params) => {
     try {

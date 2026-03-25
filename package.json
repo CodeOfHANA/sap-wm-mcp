@@ -1,6 +1,6 @@
 {
   "name": "sap-wm-mcp",
-  "version": "0.2.8",
+  "version": "0.2.9",
   "description": "MCP server for SAP Classic Warehouse Management — connects AI agents to S/4HANA WM via a custom RAP OData V4 service. For systems where EWM is not active.",
   "type": "module",
   "main": "index.js",

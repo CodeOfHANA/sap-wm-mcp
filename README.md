@@ -408,12 +408,13 @@ Get physical WM stock for a material — which bins hold it and how much.
 
 #### `find_empty_bins`
 
-Find all empty storage bins, optionally filtered by storage type.
+Find all empty storage bins, optionally filtered by storage type or bin type.
 
 | Parameter | Type | Required | Description |
 |---|---|---|---|
 | `warehouse` | string | ✅ | Warehouse number |
 | `storageType` | string | | Filter by storage type |
+| `binType` | string | | Filter by bin type — e.g. `E1`, `E2`. Use when the destination bin must match a specific storage unit type and SAP rejects mismatched types |
 | `top` | number | | Max records (default: `50`) |
 
 ---
