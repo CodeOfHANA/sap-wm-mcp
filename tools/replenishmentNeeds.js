@@ -11,6 +11,7 @@ export async function getReplenishmentNeeds({
   material,
   minimumQuantity = 0,
   targetQuantity,
+  defaultReplenishQty = 50,
   top = 50
 }) {
   // Step 1 + 2 in parallel: stock per bin + open TO headers
@@ -68,7 +69,7 @@ export async function getReplenishmentNeeds({
       truncated: false,
       warehouse,
       storageType,
-      filters:   { material: material ?? 'all', minimumQuantity, targetQuantity: targetQuantity ?? null },
+      filters:   { material: material ?? 'all', minimumQuantity, targetQuantity: targetQuantity ?? null, defaultReplenishQty },
       summary:   { critical: 0, low: 0 },
       bins:      [],
       note:      `All bins in storage type ${storageType} are above minimum quantity (${minimumQuantity})`
@@ -103,12 +104,12 @@ export async function getReplenishmentNeeds({
   const bins = lowBins
     .sort((a, b) => a.totalStock - b.totalStock)
     .map(e => {
-      const key          = `${e.bin}::${e.material}`;
-      const urgency      = e.totalStock <= 0 ? 'critical' : 'low';
-      const openTONumber = replenTOMap.get(key) ?? null;
+      const key              = `${e.bin}::${e.material}`;
+      const urgency          = e.totalStock <= 0 ? 'critical' : 'low';
+      const openTONumber     = replenTOMap.get(key) ?? null;
       const replenishmentQty = targetQuantity != null
         ? Math.max(0, targetQuantity - e.totalStock)
-        : null;
+        : defaultReplenishQty;
       return {
         storageType:      e.storageType,
         bin:              e.bin,
@@ -130,7 +131,7 @@ export async function getReplenishmentNeeds({
     truncated: allStock.length >= top * 10,
     warehouse,
     storageType,
-    filters:   { material: material ?? 'all', minimumQuantity, targetQuantity: targetQuantity ?? null },
+    filters:   { material: material ?? 'all', minimumQuantity, targetQuantity: targetQuantity ?? null, defaultReplenishQty },
     summary: {
       critical: bins.filter(b => b.urgency === 'critical').length,
       low:      bins.filter(b => b.urgency === 'low').length

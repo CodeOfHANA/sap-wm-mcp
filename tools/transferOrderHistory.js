@@ -26,12 +26,11 @@ export async function getTransferOrderHistory({
   if (dateTo)        headerFilters.push(`CreatedDate le ${esc(dateTo)}`);
   if (movementType)  headerFilters.push(`MovementType eq '${esc(movementType)}'`);
   if (createdBy)     headerFilters.push(`CreatedBy eq '${esc(createdBy)}'`);
-  if (executedBy)    headerFilters.push(`ExecutedBy eq '${esc(executedBy)}'`);
+  // executedBy (BTANR) lives on items — filtered in-memory after item fetch
 
   const headerSelect = [
     'WarehouseNumber','TransferOrderNumber','MovementType','IsConfirmed',
     'CreatedDate','CreatedTime','CreatedBy',
-    'ConfirmedDate','ExecutedBy','StartDate','StartTime','EndDate','EndTime',
     'TransferReqNumber','NumberOfItems'
   ].join(',');
 
@@ -75,7 +74,8 @@ export async function getTransferOrderHistory({
       destBin:      item.DestBin,
       requiredQty:  parseFloat(item.RequiredQuantity)  || 0,
       confirmedQty: parseFloat(item.ConfirmedQuantity) || 0,
-      uom:          item.UnitOfMeasure
+      uom:          item.UnitOfMeasure,
+      confirmedBy:  item.ConfirmedBy || null
     });
   }
 
@@ -87,21 +87,15 @@ export async function getTransferOrderHistory({
   // Step 5 — Build response
   const today = new Date();
 
-  const orders = filteredHeaders.map(h => {
-    const items          = itemsByTo[h.TransferOrderNumber] ?? [];
-    const createdAt      = h.CreatedDate ? new Date(h.CreatedDate) : null;
-    const daysSince      = createdAt ? Math.floor((today - createdAt) / 86400000) : null;
-    const isConfirmed    = h.IsConfirmed === true || h.IsConfirmed === 'X';
+  let orders = filteredHeaders.map(h => {
+    const items       = itemsByTo[h.TransferOrderNumber] ?? [];
+    const createdAt   = h.CreatedDate ? new Date(h.CreatedDate) : null;
+    const daysSince   = createdAt ? Math.floor((today - createdAt) / 86400000) : null;
+    const isConfirmed = h.IsConfirmed === true || h.IsConfirmed === 'X';
 
-    // Duration: minutes between StartDate/Time and EndDate/Time
-    let durationMinutes = null;
-    if (h.StartDate && h.EndDate && h.StartTime && h.EndTime) {
-      const start = new Date(`${h.StartDate}T${h.StartTime}`);
-      const end   = new Date(`${h.EndDate}T${h.EndTime}`);
-      if (!isNaN(start) && !isNaN(end)) {
-        durationMinutes = Math.round((end - start) / 60000);
-      }
-    }
+    // Derive executedBy from items — unique non-null BTANR values
+    const execUsers = [...new Set(items.map(i => i.confirmedBy).filter(Boolean))];
+    const derivedExecutedBy = execUsers.length === 1 ? execUsers[0] : execUsers.length > 1 ? execUsers.join(', ') : null;
 
     return {
       toNumber:           h.TransferOrderNumber,
@@ -110,23 +104,23 @@ export async function getTransferOrderHistory({
       transferReqNumber:  h.TransferReqNumber || null,
       numberOfItems:      parseInt(h.NumberOfItems) || items.length,
       created: {
-        date:   h.CreatedDate,
-        time:   h.CreatedTime,
-        by:     h.CreatedBy,
+        date:    h.CreatedDate,
+        time:    h.CreatedTime,
+        by:      h.CreatedBy,
         daysAgo: daysSince
       },
       execution: isConfirmed ? {
-        confirmedDate: h.ConfirmedDate  || null,
-        executedBy:    h.ExecutedBy     || null,
-        startDate:     h.StartDate      || null,
-        startTime:     h.StartTime      || null,
-        endDate:       h.EndDate        || null,
-        endTime:       h.EndTime        || null,
-        durationMinutes
+        executedBy: derivedExecutedBy
       } : null,
       items
     };
   });
+
+  // Apply executedBy in-memory filter (BTANR is on items, not header)
+  if (executedBy) {
+    const target = executedBy.toUpperCase();
+    orders = orders.filter(o => o.execution?.executedBy?.toUpperCase().includes(target));
+  }
 
   return {
     count:    orders.length,

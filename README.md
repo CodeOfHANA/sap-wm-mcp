@@ -534,8 +534,8 @@ The following tools are available in the published npm package and fully functio
 | `get_quant_fragmentation` | Bin+material combinations with excessive quant count — consolidation candidates |
 | `get_unresolved_su_negatives` | Persistent negative quants in SU zones older than a configurable age |
 | `get_inventory_anomalies` | Bins stuck in mid-inventory state — empty bins with locks, open count docs, orphaned lock codes |
-| `get_transfer_order_history` | Full TO history with creation date, creator, confirmation date, executor, duration, and item detail — filterable by date range, status, movement type, material, or user |
-| `get_replenishment_needs` | Find forward-pick bins at or below a stock threshold — flags bins with an open replenishment TO already in progress to avoid duplicate moves |
+| `get_transfer_order_history` | Full TO history — creator, executor (resolved from LTAP.QNAME), and item detail; filterable by date range, status, movement type, material, `createdBy`, or `executedBy` |
+| `get_replenishment_needs` | Find forward-pick bins at or below a stock threshold — `defaultReplenishQty` param (default 50) used as fallback when no bin max qty is configured; flags bins with an open replenishment TO to avoid duplicate moves |
 
 ---
 
@@ -676,7 +676,8 @@ sap-wm-mcp/
 │   ├── confirmTransferOrder.js       ← confirm_transfer_order
 │   ├── confirmTransferOrderSU.js     ← confirm_transfer_order_su
 │   ├── cancelTransferOrder.js        ← cancel_transfer_order
-│   └── transferOrderHistory.js       ← get_transfer_order_history
+│   ├── transferOrderHistory.js       ← get_transfer_order_history
+│   └── replenishmentNeeds.js         ← get_replenishment_needs
 ├── .env.example
 └── package.json
 ```

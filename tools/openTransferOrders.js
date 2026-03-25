@@ -68,7 +68,8 @@ export async function getOpenTransferOrders({ warehouse, storageType, bin, mater
       requiredQty:      reqQty,
       confirmedQty:     confQty,
       openQty:          reqQty - confQty,
-      uom:              item.UnitOfMeasure
+      uom:              item.UnitOfMeasure,
+      executedBy:       item.ConfirmedBy || null
     };
   });
 

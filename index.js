@@ -442,9 +442,10 @@ server.tool(
     warehouse:       z.string().describe('Warehouse number e.g. 102'),
     storageType:     z.string().optional().default('P01').describe('Forward pick storage type to check (default P01)'),
     material:        z.string().optional().describe('Narrow to a specific material e.g. TG0001'),
-    minimumQuantity: z.number().optional().default(0).describe('Flag bins with stock at or below this level. Default 0 = empty or negative only.'),
-    targetQuantity:  z.number().optional().describe('Fill-to target quantity — used to calculate replenishmentQty in the response. Leave unset if unknown.'),
-    top:             z.number().optional().default(50).describe('Max records to return')
+    minimumQuantity:     z.number().optional().default(0).describe('Flag bins at or below this level. Default 0 = empty/negative only. Overridden per bin when LAGP min qty (MNMNG) is configured.'),
+    targetQuantity:      z.number().optional().describe('Fill-to target — overrides bin master MaximumQuantity when set.'),
+    defaultReplenishQty: z.number().optional().default(50).describe('Fallback replenishment qty when bin master max qty (MXMNG) is 0 and no targetQuantity given. Default 50.'),
+    top:                 z.number().optional().default(50).describe('Max records to return')
   },
   async (params) => {
     try {
