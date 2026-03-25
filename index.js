@@ -28,8 +28,9 @@ import { getInventoryAnomalies } from './tools/inventoryAnomalies.js';
 import { getTransferOrderHistory } from './tools/transferOrderHistory.js';
 import { cancelTransferOrder } from './tools/cancelTransferOrder.js';
 import { getReplenishmentNeeds } from './tools/replenishmentNeeds.js';
+import { getInterimZoneAnomalies } from './tools/interimZoneAnomalies.js';
 
-const server = new McpServer({ name: 'sap-wm-mcp', version: '0.2.6' });
+const server = new McpServer({ name: 'sap-wm-mcp', version: '0.2.8' });
 
 // Tool 1 — get_bin_status
 server.tool(
@@ -450,6 +451,27 @@ server.tool(
   async (params) => {
     try {
       const result = await getReplenishmentNeeds(params);
+      return { content: [{ type: 'text', text: JSON.stringify(result, null, 2) }] };
+    } catch (err) {
+      return { content: [{ type: 'text', text: `Error: ${err.message}` }], isError: true };
+    }
+  }
+);
+
+// Tool 22 — get_interim_zone_anomalies
+server.tool(
+  'get_interim_zone_anomalies',
+  'Detect positive stock stranded in interim/staging zones (types 999, 998, 902) where stock should only pass through briefly. Surfaces same-day, overnight, and multi-day strandings with likely cause per zone type. Run when stock appears to be lost or unaccounted for, or as part of end-of-shift reconciliation.',
+  {
+    warehouse:       z.string().describe('Warehouse number e.g. 102'),
+    interimTypes:    z.array(z.string()).optional().default(['999', '998', '902']).describe('Interim storage types to check — default [999, 998, 902]'),
+    minDaysStranded: z.number().optional().default(0).describe('Only return stock stranded for at least this many days. Default 0 = include same-day strandings.'),
+    material:        z.string().optional().describe('Narrow to a specific material e.g. TG0001'),
+    top:             z.number().optional().default(100).describe('Max quants to scan (scans top * 3 internally to account for client-side filtering)')
+  },
+  async (params) => {
+    try {
+      const result = await getInterimZoneAnomalies(params);
       return { content: [{ type: 'text', text: JSON.stringify(result, null, 2) }] };
     } catch (err) {
       return { content: [{ type: 'text', text: `Error: ${err.message}` }], isError: true };

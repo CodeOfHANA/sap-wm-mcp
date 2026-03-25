@@ -13,7 +13,7 @@ Connect AI agents — Claude, Copilot, or any MCP-compatible client — directly
 >
 > This project ships a custom RAP OData V4 service that exposes classic WM operations as a proper API — and wraps it in an MCP server so AI agents can drive it. Large portions of the SAP install base are still on classic WM. This fills the gap.
 
-The **npm package** ships 21 tools covering core operations, analytics, shift management, anomaly detection, audit history, and proactive replenishment. This repository contains the 9 open-sourced tool implementations — the ABAP RAP service source and additional tool source are available separately (see [ABAP Service Installation](#abap-service-installation)).
+The **npm package** ships 22 tools covering core operations, analytics, shift management, anomaly detection, audit history, proactive replenishment, and interim zone reconciliation. This repository contains the 9 open-sourced tool implementations — the ABAP RAP service source and additional tool source are available separately (see [ABAP Service Installation](#abap-service-installation)).
 
 ---
 
@@ -374,7 +374,7 @@ For write operations:
 
 ## Tools Reference
 
-The npm package ships **21 tools** across five capability areas. The 9 tools below are open-sourced in this repository. Analytics, shift management, anomaly detection, and operations tools are available in the published package.
+The npm package ships **22 tools** across five capability areas. The 9 tools below are open-sourced in this repository. Analytics, shift management, anomaly detection, and operations tools are available in the published package.
 
 ---
 
@@ -536,6 +536,7 @@ The following tools are available in the published npm package and fully functio
 | `get_inventory_anomalies` | Bins stuck in mid-inventory state — empty bins with locks, open count docs, orphaned lock codes |
 | `get_transfer_order_history` | Full TO history — creator, executor (resolved from LTAP.QNAME), and item detail; filterable by date range, status, movement type, material, `createdBy`, or `executedBy` |
 | `get_replenishment_needs` | Find forward-pick bins at or below a stock threshold — `defaultReplenishQty` param (default 50) used as fallback when no bin max qty is configured; flags bins with an open replenishment TO to avoid duplicate moves |
+| `get_interim_zone_anomalies` | Detect positive stock stranded in interim/staging zones (types 999, 998, 902) — surfaces same-day, overnight, and multi-day strandings with likely cause per zone; use `minDaysStranded` to filter noise during active shifts |
 
 ---
 
@@ -677,7 +678,8 @@ sap-wm-mcp/
 │   ├── confirmTransferOrderSU.js     ← confirm_transfer_order_su
 │   ├── cancelTransferOrder.js        ← cancel_transfer_order
 │   ├── transferOrderHistory.js       ← get_transfer_order_history
-│   └── replenishmentNeeds.js         ← get_replenishment_needs
+│   ├── replenishmentNeeds.js         ← get_replenishment_needs
+│   └── interimZoneAnomalies.js       ← get_interim_zone_anomalies
 ├── .env.example
 └── package.json
 ```
