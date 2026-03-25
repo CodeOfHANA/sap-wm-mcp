@@ -13,7 +13,7 @@ Connect AI agents — Claude, Copilot, or any MCP-compatible client — directly
 >
 > This project ships a custom RAP OData V4 service that exposes classic WM operations as a proper API — and wraps it in an MCP server so AI agents can drive it. Large portions of the SAP install base are still on classic WM. This fills the gap.
 
-The **npm package** ships 18 tools covering core operations, analytics, shift management, and anomaly detection. This repository contains the 9 open-sourced tool implementations — the ABAP RAP service source and additional tool source are available separately (see [ABAP Service Installation](#abap-service-installation)).
+The **npm package** ships 19 tools covering core operations, analytics, shift management, anomaly detection, and audit history. This repository contains the 9 open-sourced tool implementations — the ABAP RAP service source and additional tool source are available separately (see [ABAP Service Installation](#abap-service-installation)).
 
 ---
 
@@ -362,6 +362,14 @@ For write operations:
 "Are there any fragmented quants that need consolidation TOs?"
 ```
 
+**Audit and history**
+```
+"Show me all transfer orders created in warehouse 102 this month"
+"Which TOs did NOMANH create last week?"
+"Show me all open TOs created more than 3 days ago — something is stuck"
+"Give me a history of movement type 999 TOs for material TG0001"
+```
+
 ---
 
 ## Tools Reference
@@ -511,6 +519,7 @@ The following tools are available in the published npm package and fully functio
 | `get_quant_fragmentation` | Bin+material combinations with excessive quant count — consolidation candidates |
 | `get_unresolved_su_negatives` | Persistent negative quants in SU zones older than a configurable age |
 | `get_inventory_anomalies` | Bins stuck in mid-inventory state — empty bins with locks, open count docs, orphaned lock codes |
+| `get_transfer_order_history` | Full TO history with creation date, creator, confirmation date, executor, duration, and item detail — filterable by date range, status, movement type, material, or user |
 
 ---
 
@@ -649,6 +658,7 @@ sap-wm-mcp/
 │   ├── createTransferOrder.js        ← create_transfer_order
 │   ├── confirmTransferOrder.js       ← confirm_transfer_order
 │   └── confirmTransferOrderSU.js     ← confirm_transfer_order_su
+│   └── transferOrderHistory.js       ← get_transfer_order_history
 ├── .env.example
 └── package.json
 ```
@@ -673,7 +683,7 @@ Running both side-by-side shows the contrast directly: same tools, same question
 | Phase | Status | Description |
 |---|---|---|
 | Phase 0 — RAP Service | ✅ Complete | Custom OData V4 service with 7 entity sets over classic WM tables |
-| Phase 1 — Local MCP | ✅ Complete | 18 tools working, security hardened, published to npm |
+| Phase 1 — Local MCP | ✅ Complete | 19 tools working, security hardened, published to npm |
 | Phase 2 — BTP CF | 🔜 Planned | Deploy to SAP BTP Cloud Foundry with SSE transport + XSUAA + Cloud Connector |
 | Phase 3 — Joule Agent | 💡 Future | Native Joule Studio agent using the same RAP service |
 

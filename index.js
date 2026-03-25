@@ -25,8 +25,9 @@ import { getGoodsReceiptMonitor } from './tools/goodsReceiptMonitor.js';
 import { getQuantFragmentation } from './tools/quantFragmentation.js';
 import { getUnresolvedSuNegatives } from './tools/unresolvedSuNegatives.js';
 import { getInventoryAnomalies } from './tools/inventoryAnomalies.js';
+import { getTransferOrderHistory } from './tools/transferOrderHistory.js';
 
-const server = new McpServer({ name: 'sap-wm-mcp', version: '0.2.0' });
+const server = new McpServer({ name: 'sap-wm-mcp', version: '0.2.5' });
 
 // Tool 1 — get_bin_status
 server.tool(
@@ -381,6 +382,31 @@ server.tool(
   async (params) => {
     try {
       const result = await getInventoryAnomalies(params);
+      return { content: [{ type: 'text', text: JSON.stringify(result, null, 2) }] };
+    } catch (err) {
+      return { content: [{ type: 'text', text: `Error: ${err.message}` }], isError: true };
+    }
+  }
+);
+
+// Tool 19 — get_transfer_order_history
+server.tool(
+  'get_transfer_order_history',
+  'Get the full history of classic WM Transfer Orders in S/4HANA — when they were created, by whom, when confirmed, who executed them, and how long they took. Filter by date range, status (open/confirmed/all), movement type, material, creator, or executor.',
+  {
+    warehouse:    z.string().describe('Warehouse number e.g. 102'),
+    dateFrom:     z.string().optional().describe('Filter TOs created from this date (YYYY-MM-DD) e.g. 2026-01-01'),
+    dateTo:       z.string().optional().describe('Filter TOs created up to this date (YYYY-MM-DD) e.g. 2026-03-31'),
+    status:       z.enum(['open', 'confirmed', 'all']).optional().default('all').describe('Filter by confirmation status — open, confirmed, or all (default: all)'),
+    movementType: z.string().optional().describe('Filter by WM movement type e.g. 999'),
+    createdBy:    z.string().optional().describe('Filter by the SAP user who created the TO e.g. NOMANH'),
+    executedBy:   z.string().optional().describe('Filter by the SAP user who executed/confirmed the TO'),
+    material:     z.string().optional().describe('Filter by material number e.g. TG0001'),
+    top:          z.number().optional().default(50).describe('Max number of TOs to return (default 50)')
+  },
+  async (params) => {
+    try {
+      const result = await getTransferOrderHistory(params);
       return { content: [{ type: 'text', text: JSON.stringify(result, null, 2) }] };
     } catch (err) {
       return { content: [{ type: 'text', text: `Error: ${err.message}` }], isError: true };
