@@ -26,8 +26,10 @@ import { getQuantFragmentation } from './tools/quantFragmentation.js';
 import { getUnresolvedSuNegatives } from './tools/unresolvedSuNegatives.js';
 import { getInventoryAnomalies } from './tools/inventoryAnomalies.js';
 import { getTransferOrderHistory } from './tools/transferOrderHistory.js';
+import { cancelTransferOrder } from './tools/cancelTransferOrder.js';
+import { getReplenishmentNeeds } from './tools/replenishmentNeeds.js';
 
-const server = new McpServer({ name: 'sap-wm-mcp', version: '0.2.5' });
+const server = new McpServer({ name: 'sap-wm-mcp', version: '0.2.6' });
 
 // Tool 1 — get_bin_status
 server.tool(
@@ -407,6 +409,46 @@ server.tool(
   async (params) => {
     try {
       const result = await getTransferOrderHistory(params);
+      return { content: [{ type: 'text', text: JSON.stringify(result, null, 2) }] };
+    } catch (err) {
+      return { content: [{ type: 'text', text: `Error: ${err.message}` }], isError: true };
+    }
+  }
+);
+
+// Tool 20 — cancel_transfer_order
+server.tool(
+  'cancel_transfer_order',
+  'Cancel an open classic WM Transfer Order — releases the source quant lock and removes the destination bin reservation. Only works on TOs not yet confirmed. Use to recover from a wrong bin or quantity before retrying with corrected parameters.',
+  {
+    warehouse:           z.string().describe('Warehouse number e.g. 102'),
+    transferOrderNumber: z.string().describe('Transfer order number to cancel e.g. 0000000730')
+  },
+  async (params) => {
+    try {
+      const result = await cancelTransferOrder(params);
+      return { content: [{ type: 'text', text: JSON.stringify(result, null, 2) }] };
+    } catch (err) {
+      return { content: [{ type: 'text', text: `Error: ${err.message}` }], isError: true };
+    }
+  }
+);
+
+// Tool 21 — get_replenishment_needs
+server.tool(
+  'get_replenishment_needs',
+  'Find forward pick and fixed storage bins that are at or below their minimum stock threshold and need replenishment. Returns urgency level (critical = empty or negative, low = below minimum) and flags bins where an open replenishment TO already exists. Run at shift start and before peak picking periods.',
+  {
+    warehouse:       z.string().describe('Warehouse number e.g. 102'),
+    storageType:     z.string().optional().default('P01').describe('Forward pick storage type to check (default P01)'),
+    material:        z.string().optional().describe('Narrow to a specific material e.g. TG0001'),
+    minimumQuantity: z.number().optional().default(0).describe('Flag bins with stock at or below this level. Default 0 = empty or negative only.'),
+    targetQuantity:  z.number().optional().describe('Fill-to target quantity — used to calculate replenishmentQty in the response. Leave unset if unknown.'),
+    top:             z.number().optional().default(50).describe('Max records to return')
+  },
+  async (params) => {
+    try {
+      const result = await getReplenishmentNeeds(params);
       return { content: [{ type: 'text', text: JSON.stringify(result, null, 2) }] };
     } catch (err) {
       return { content: [{ type: 'text', text: `Error: ${err.message}` }], isError: true };

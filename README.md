@@ -13,7 +13,7 @@ Connect AI agents — Claude, Copilot, or any MCP-compatible client — directly
 >
 > This project ships a custom RAP OData V4 service that exposes classic WM operations as a proper API — and wraps it in an MCP server so AI agents can drive it. Large portions of the SAP install base are still on classic WM. This fills the gap.
 
-The **npm package** ships 19 tools covering core operations, analytics, shift management, anomaly detection, and audit history. This repository contains the 9 open-sourced tool implementations — the ABAP RAP service source and additional tool source are available separately (see [ABAP Service Installation](#abap-service-installation)).
+The **npm package** ships 21 tools covering core operations, analytics, shift management, anomaly detection, audit history, and proactive replenishment. This repository contains the 9 open-sourced tool implementations — the ABAP RAP service source and additional tool source are available separately (see [ABAP Service Installation](#abap-service-installation)).
 
 ---
 
@@ -56,7 +56,7 @@ AI Agent (Claude / Copilot / any MCP client)
         ├── LTAP   (Transfer Order Items)
         ├── LTBK   (Transfer Requirement Header)
         ├── MARD   (IM Stock per Storage Location)
-        └── FMs    L_TO_CREATE_SINGLE · L_TO_CONFIRM · L_TO_CONFIRM_SU
+        └── FMs    L_TO_CREATE_SINGLE · L_TO_CONFIRM · L_TO_CONFIRM_SU · L_TO_CANCEL
 ```
 
 Unlike EWM, classic WM has no standard OData APIs. This package requires a **custom RAP OData V4 service** (`ZSD_WMMCPSERVICE`) installed in your SAP system. The MCP server calls that service. See [ABAP Service Installation](#abap-service-installation).
@@ -374,7 +374,7 @@ For write operations:
 
 ## Tools Reference
 
-The npm package ships **18 tools** across four capability areas. The 9 tools below are open-sourced in this repository. Analytics, shift management, and anomaly detection tools are available in the published package.
+The npm package ships **21 tools** across five capability areas. The 9 tools below are open-sourced in this repository. Analytics, shift management, anomaly detection, and operations tools are available in the published package.
 
 ---
 
@@ -504,6 +504,21 @@ Confirm all open Transfer Orders on a storage unit in one call — useful for SU
 
 ---
 
+#### `cancel_transfer_order`
+
+Cancel an open Transfer Order — removes it from the active TO queue. Equivalent to transaction **LT15**.
+
+Internally calls `L_TO_CANCEL`. Returns a clear error message for each SAP exception (already confirmed, locked, partially confirmed, etc.).
+
+| Parameter | Type | Required | Description |
+|---|---|---|---|
+| `warehouse` | string | ✅ | Warehouse number |
+| `transferOrderNumber` | string | ✅ | Transfer order number — e.g. `0000000652` |
+
+> **Note:** Only open (unconfirmed) TOs can be cancelled. Confirmed TOs, partially confirmed TOs, and TOs locked by another user will return a descriptive error.
+
+---
+
 ### Additional Tools (npm package)
 
 The following tools are available in the published npm package and fully functional via `npx sap-wm-mcp`:
@@ -520,6 +535,7 @@ The following tools are available in the published npm package and fully functio
 | `get_unresolved_su_negatives` | Persistent negative quants in SU zones older than a configurable age |
 | `get_inventory_anomalies` | Bins stuck in mid-inventory state — empty bins with locks, open count docs, orphaned lock codes |
 | `get_transfer_order_history` | Full TO history with creation date, creator, confirmation date, executor, duration, and item detail — filterable by date range, status, movement type, material, or user |
+| `get_replenishment_needs` | Find forward-pick bins at or below a stock threshold — flags bins with an open replenishment TO already in progress to avoid duplicate moves |
 
 ---
 
@@ -595,6 +611,7 @@ Classic WM has no standard OData APIs. This project builds one using **ABAP REST
 | `CreateTransferOrder` | `L_TO_CREATE_SINGLE` | Called via RFC wrapper `ZWM_TO_CREATE` with `DESTINATION 'NONE'` |
 | `ConfirmTransferOrder` | `L_TO_CONFIRM` | Called directly — no COMMIT needed |
 | `ConfirmTransferOrderSU` | `L_TO_CONFIRM_SU` | Called directly — no COMMIT needed |
+| `CancelTransferOrder` | `L_TO_CANCEL` | Called directly — no COMMIT needed |
 
 ### Why the RFC wrapper?
 
@@ -657,7 +674,8 @@ sap-wm-mcp/
 │   ├── openTransferOrders.js         ← get_open_transfer_orders
 │   ├── createTransferOrder.js        ← create_transfer_order
 │   ├── confirmTransferOrder.js       ← confirm_transfer_order
-│   └── confirmTransferOrderSU.js     ← confirm_transfer_order_su
+│   ├── confirmTransferOrderSU.js     ← confirm_transfer_order_su
+│   ├── cancelTransferOrder.js        ← cancel_transfer_order
 │   └── transferOrderHistory.js       ← get_transfer_order_history
 ├── .env.example
 └── package.json
@@ -683,7 +701,7 @@ Running both side-by-side shows the contrast directly: same tools, same question
 | Phase | Status | Description |
 |---|---|---|
 | Phase 0 — RAP Service | ✅ Complete | Custom OData V4 service with 7 entity sets over classic WM tables |
-| Phase 1 — Local MCP | ✅ Complete | 19 tools working, security hardened, published to npm |
+| Phase 1 — Local MCP | ✅ Complete | 21 tools working, security hardened, published to npm |
 | Phase 2 — BTP CF | 🔜 Planned | Deploy to SAP BTP Cloud Foundry with SSE transport + XSUAA + Cloud Connector |
 | Phase 3 — Joule Agent | 💡 Future | Native Joule Studio agent using the same RAP service |
 
