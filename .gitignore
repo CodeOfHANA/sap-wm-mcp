@@ -1,6 +1,7 @@
 node_modules
 .mcp.json
 .env
+.vscode/
 
 # Personal Claude Code working document — contains real IP, user, internal system details
 CLAUDE.md
