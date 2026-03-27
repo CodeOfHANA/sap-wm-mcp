@@ -29,8 +29,10 @@ import { getTransferOrderHistory } from './tools/transferOrderHistory.js';
 import { cancelTransferOrder } from './tools/cancelTransferOrder.js';
 import { getReplenishmentNeeds } from './tools/replenishmentNeeds.js';
 import { getInterimZoneAnomalies } from './tools/interimZoneAnomalies.js';
+import { getGoodsIssueMonitor } from './tools/goodsIssueMonitor.js';
+import { createCycleCountDoc } from './tools/createCycleCountDoc.js';
 
-const server = new McpServer({ name: 'sap-wm-mcp', version: '0.2.9' });
+const server = new McpServer({ name: 'sap-wm-mcp', version: '0.3.2' });
 
 // Tool 1 — get_bin_status
 server.tool(
@@ -127,7 +129,8 @@ server.tool(
     sourceStorageUnit:  z.string().optional().default('').describe('Source storage unit (LENUM) — required for SU-managed types e.g. 00000000001000000017'),
     destType:           z.string().describe('Destination storage type e.g. 001'),
     destBin:            z.string().describe('Destination bin e.g. 01-06-03'),
-    destStorageUnit:    z.string().optional().default('').describe('Destination storage unit (LENUM) — for SU-managed types, same as source SU when moving full SU')
+    destStorageUnit:    z.string().optional().default('').describe('Destination storage unit (LENUM) — for SU-managed types, same as source SU when moving full SU'),
+    autoConfirm:        z.boolean().optional().default(false).describe('Immediately confirm the TO after creation (sets I_SQUIT=X in L_TO_CREATE_SINGLE) — use for internal replenishment moves where no physical confirmation step is needed')
   },
   async (params) => {
     try {
@@ -473,6 +476,47 @@ server.tool(
   async (params) => {
     try {
       const result = await getInterimZoneAnomalies(params);
+      return { content: [{ type: 'text', text: JSON.stringify(result, null, 2) }] };
+    } catch (err) {
+      return { content: [{ type: 'text', text: `Error: ${err.message}` }], isError: true };
+    }
+  }
+);
+
+// Tool 23 — get_goods_issue_monitor
+server.tool(
+  'get_goods_issue_monitor',
+  'Show open outbound deliveries in a classic WM warehouse — delivery qty vs picked qty, GI status, overdue flag, and which items still have stock in the GI zone (type 999). Use to track picking progress, identify stalled shipments, and understand the outbound delivery context behind TOs sourced from the GI zone.',
+  {
+    warehouse:        z.string().describe('Warehouse number e.g. 102'),
+    shippingPoint:    z.string().optional().describe('Filter by shipping point e.g. 1000'),
+    includeCompleted: z.boolean().optional().default(false).describe('Include deliveries where GI has already been posted (default false — open only)'),
+    material:         z.string().optional().describe('Narrow to a specific material e.g. TG0001'),
+    top:              z.number().optional().default(50).describe('Max delivery items to fetch (default 50)')
+  },
+  async (params) => {
+    try {
+      const result = await getGoodsIssueMonitor(params);
+      return { content: [{ type: 'text', text: JSON.stringify(result, null, 2) }] };
+    } catch (err) {
+      return { content: [{ type: 'text', text: `Error: ${err.message}` }], isError: true };
+    }
+  }
+);
+
+// Tool 24 — create_cycle_count_document
+server.tool(
+  'create_cycle_count_document',
+  'Create a classic WM inventory document (cycle count) for a specific bin — equivalent to LI01N. Activates the bin for counting immediately by default. Use after get_cycle_count_candidates to trigger a count on flagged bins.',
+  {
+    warehouse:   z.string().describe('Warehouse number e.g. 102'),
+    storageType: z.string().describe('Storage type of the bin to count e.g. 001'),
+    bin:         z.string().describe('Storage bin to count e.g. 01-02-03'),
+    activateNow: z.boolean().optional().default(true).describe('Activate the inventory document immediately so the bin is ready for counting (default true)')
+  },
+  async (params) => {
+    try {
+      const result = await createCycleCountDoc(params);
       return { content: [{ type: 'text', text: JSON.stringify(result, null, 2) }] };
     } catch (err) {
       return { content: [{ type: 'text', text: `Error: ${err.message}` }], isError: true };

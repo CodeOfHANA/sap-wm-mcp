@@ -7,7 +7,8 @@ export async function createTransferOrder({
   warehouse, movementType, material, plant,
   quantity, unitOfMeasure = '',
   sourceType = '', sourceBin = '', sourceStorageUnit = '',
-  destType, destBin, destStorageUnit = ''
+  destType, destBin, destStorageUnit = '',
+  autoConfirm = false
 }) {
   const path = `${BASE}/WMTransferOrder/${NS}.CreateTransferOrder`;
 
@@ -23,7 +24,8 @@ export async function createTransferOrder({
     SourceStorageUnit: sourceStorageUnit,
     DestStorageType:   destType,
     DestBin:           destBin,
-    DestStorageUnit:   destStorageUnit
+    DestStorageUnit:   destStorageUnit,
+    AutoConfirm:       autoConfirm ? 'X' : ' '
   };
 
   // Snapshot the latest TO number BEFORE the call to avoid the race condition

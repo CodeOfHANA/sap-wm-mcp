@@ -478,6 +478,9 @@ Internally calls `L_TO_CREATE_SINGLE` via an RFC-enabled wrapper, isolated from 
 | `destType` | string | ✅ | Destination storage type |
 | `destBin` | string | ✅ | Destination bin |
 | `destStorageUnit` | string | | Destination storage unit (LENUM) — for SU-managed destination types |
+| `autoConfirm` | boolean | | When `true`, the TO is created and immediately confirmed in a single call — no separate `confirm_transfer_order` step needed. Maps to `I_SQUIT = 'X'` in `L_TO_CREATE_SINGLE`. Default: `false`. |
+
+> **`autoConfirm`:** Use for internal replenishment or relocation moves where no physical scan or operator acknowledgement is required. Do not use for inbound putaway from GR zone or outbound picks where confirmation must happen on the warehouse floor.
 
 > **Note on SU-managed storage types:** Storage types with `LPTYP` set in `LAGP` (e.g. type `001`) require a `destStorageUnit` (LENUM) when used as the TO destination. Storage types with `LPTYP` blank (e.g. type `003`) do not.
 
@@ -705,7 +708,7 @@ Running both side-by-side shows the contrast directly: same tools, same question
 | Phase | Status | Description |
 |---|---|---|
 | Phase 0 — RAP Service | ✅ Complete | Custom OData V4 service with 7 entity sets over classic WM tables |
-| Phase 1 — Local MCP | ✅ Complete | 21 tools working, security hardened, published to npm |
+| Phase 1 — Local MCP | ✅ Complete | 22 tools working, security hardened, published to npm |
 | Phase 2 — BTP CF | 🔜 Planned | Deploy to SAP BTP Cloud Foundry with SSE transport + XSUAA + Cloud Connector |
 | Phase 3 — Joule Agent | 💡 Future | Native Joule Studio agent using the same RAP service |
 
