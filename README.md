@@ -13,7 +13,7 @@ Connect AI agents — Claude, Copilot, or any MCP-compatible client — directly
 >
 > This project ships a custom RAP OData V4 service that exposes classic WM operations as a proper API — and wraps it in an MCP server so AI agents can drive it. Large portions of the SAP install base are still on classic WM. This fills the gap.
 
-The **npm package** ships 22 tools covering core operations, analytics, shift management, anomaly detection, audit history, proactive replenishment, and interim zone reconciliation. This repository contains the 9 open-sourced tool implementations — the ABAP RAP service source and additional tool source are available separately (see [ABAP Service Installation](#abap-service-installation)).
+The **npm package** ships 23 tools covering core operations, analytics, shift management, anomaly detection, audit history, proactive replenishment, interim zone reconciliation, and cycle count management. This repository contains the 9 open-sourced tool implementations — the ABAP RAP service source and additional tool source are available separately (see [ABAP Service Installation](#abap-service-installation)).
 
 ---
 
@@ -374,7 +374,7 @@ For write operations:
 
 ## Tools Reference
 
-The npm package ships **22 tools** across five capability areas. The 9 tools below are open-sourced in this repository. Analytics, shift management, anomaly detection, and operations tools are available in the published package.
+The npm package ships **23 tools** across five capability areas. The 9 tools below are open-sourced in this repository. Analytics, shift management, anomaly detection, cycle count management, and operations tools are available in the published package.
 
 ---
 
@@ -541,6 +541,8 @@ The following tools are available in the published npm package and fully functio
 | `get_transfer_order_history` | Full TO history — creator, executor (resolved from LTAP.QNAME), and item detail; filterable by date range, status, movement type, material, `createdBy`, or `executedBy` |
 | `get_replenishment_needs` | Find forward-pick bins at or below a stock threshold — `defaultReplenishQty` param (default 50) used as fallback when no bin max qty is configured; flags bins with an open replenishment TO to avoid duplicate moves |
 | `get_interim_zone_anomalies` | Detect positive stock stranded in interim/staging zones (types 999, 998, 902) — surfaces same-day, overnight, and multi-day strandings with likely cause per zone; use `minDaysStranded` to filter noise during active shifts |
+| `get_goods_issue_monitor` | Open outbound deliveries — delivery qty vs picked qty, GI status, overdue flag, and stock still in GI zone (type 999). Tracks picking progress and stalled shipments. |
+| `create_cycle_count_document` | Create a WM inventory document (LI01N equivalent) for a specific bin. Activates the bin immediately by default (`LAGP.KZINV = 'IL'`). Use after `get_cycle_count_candidates` to trigger a count. |
 
 ---
 
@@ -566,11 +568,17 @@ The ABAP source is not included in this public repository. To obtain the ABAP pa
 | `ZR_WMCYCLECOUNTBIN` | CDS View | View over LAGP (cycle count indicators) |
 | `ZR_WMTRANSFERORDER` | BDEF | Behavior definition — defines actions |
 | `ZBP_R_WMTRANSFERORDER` | Class | RAP behavior implementation |
-| `ZWM_MFG` | Function Group | Contains RFC wrapper FM |
+| `ZR_WMGOODSISSUEDELIVERY` | CDS View | View over LIKP + LIPS (outbound deliveries for GI monitor) |
+| `ZR_WMTRANSFERORDER` | BDEF | Behavior definition — defines actions |
+| `ZBP_R_WMTRANSFERORDER` | Class | RAP behavior implementation |
+| `ZWM_MFG` | Function Group | Contains all RFC wrapper FMs |
 | `ZWM_TO_CREATE` | Function Module | RFC-enabled wrapper for `L_TO_CREATE_SINGLE` |
-| `ZA_WMCREATETOPARAM` | Structure | Parameter type for CreateTransferOrder action |
-| `ZA_WMCONFIRMTOSU` | Structure | Parameter type for ConfirmTransferOrderSU action |
-| `ZSD_WMMCPSERVICE` | Service Def | OData V4 service definition (7 entity sets) |
+| `ZWM_TO_CANCEL` | Function Module | RFC-enabled wrapper for `L_TO_CANCEL` |
+| `ZWM_INV_CREATE` | Function Module | RFC-enabled wrapper — writes directly to LINK/LINP/LINV and locks bin in LAGP |
+| `ZA_WMCREATETOPARAM` | Abstract Entity | Parameter type for CreateTransferOrder action |
+| `ZA_WMCONFIRMTOSUPARAM` | Abstract Entity | Parameter type for ConfirmTransferOrderSU action |
+| `ZA_WMCREATEINVDOCPARAM` | Abstract Entity | Parameter type for CreateInventoryDocument action |
+| `ZSD_WMMCPSERVICE` | Service Def | OData V4 service definition (8 entity sets) |
 | `ZSB_WMMCPSERVICE_ODATA4_UI` | Service Binding | OData V4 UI binding |
 
 ### abapGit compatibility
@@ -616,7 +624,8 @@ Classic WM has no standard OData APIs. This project builds one using **ABAP REST
 | `CreateTransferOrder` | `L_TO_CREATE_SINGLE` | Called via RFC wrapper `ZWM_TO_CREATE` with `DESTINATION 'NONE'` |
 | `ConfirmTransferOrder` | `L_TO_CONFIRM` | Called directly — no COMMIT needed |
 | `ConfirmTransferOrderSU` | `L_TO_CONFIRM_SU` | Called directly — no COMMIT needed |
-| `CancelTransferOrder` | `L_TO_CANCEL` | Called directly — no COMMIT needed |
+| `CancelTransferOrder` | `L_TO_CANCEL` | Called via RFC wrapper `ZWM_TO_CANCEL` with `DESTINATION 'NONE'` |
+| `CreateInventoryDocument` | Direct writes to LINK/LINP/LINV | Called via RFC wrapper `ZWM_INV_CREATE` with `DESTINATION 'NONE'` |
 
 ### Why the RFC wrapper?
 
@@ -683,7 +692,9 @@ sap-wm-mcp/
 │   ├── cancelTransferOrder.js        ← cancel_transfer_order
 │   ├── transferOrderHistory.js       ← get_transfer_order_history
 │   ├── replenishmentNeeds.js         ← get_replenishment_needs
-│   └── interimZoneAnomalies.js       ← get_interim_zone_anomalies
+│   ├── interimZoneAnomalies.js       ← get_interim_zone_anomalies
+│   ├── goodsIssueMonitor.js          ← get_goods_issue_monitor
+│   └── createCycleCountDoc.js        ← create_cycle_count_document
 ├── .env.example
 └── package.json
 ```
@@ -708,7 +719,7 @@ Running both side-by-side shows the contrast directly: same tools, same question
 | Phase | Status | Description |
 |---|---|---|
 | Phase 0 — RAP Service | ✅ Complete | Custom OData V4 service with 7 entity sets over classic WM tables |
-| Phase 1 — Local MCP | ✅ Complete | 22 tools working, security hardened, published to npm |
+| Phase 1 — Local MCP | ✅ Complete | 23 tools working, security hardened, published to npm |
 | Phase 2 — BTP CF | 🔜 Planned | Deploy to SAP BTP Cloud Foundry with SSE transport + XSUAA + Cloud Connector |
 | Phase 3 — Joule Agent | 💡 Future | Native Joule Studio agent using the same RAP service |
 

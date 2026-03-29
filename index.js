@@ -42,7 +42,7 @@ server.tool(
     warehouse: z.string().describe('Warehouse number e.g. 102'),
     storageType: z.string().optional().describe('Storage type e.g. 001'),
     bin: z.string().optional().describe('Specific bin number e.g. 01-01-01'),
-    top: z.number().optional().default(20).describe('Max records to return')
+    top: z.coerce.number().optional().default(20).describe('Max records to return')
   },
   async (params) => {
     try {
@@ -62,7 +62,7 @@ server.tool(
     warehouse: z.string().describe('Warehouse number e.g. 102'),
     material: z.string().optional().describe('Material number e.g. TG0001'),
     storageType: z.string().optional().describe('Filter by storage type'),
-    top: z.number().optional().default(20).describe('Max records to return')
+    top: z.coerce.number().optional().default(20).describe('Max records to return')
   },
   async (params) => {
     try {
@@ -82,7 +82,7 @@ server.tool(
     warehouse:   z.string().describe('Warehouse number e.g. 102'),
     storageType: z.string().optional().describe('Storage type to filter e.g. 001'),
     binType:     z.string().optional().describe('Bin type to filter e.g. E1, E2 — use when destination bin must match a specific storage unit type'),
-    top:         z.number().optional().default(50).describe('Max records to return')
+    top:         z.coerce.number().optional().default(50).describe('Max records to return')
   },
   async (params) => {
     try {
@@ -101,7 +101,7 @@ server.tool(
   {
     warehouse: z.string().describe('Warehouse number e.g. 102'),
     storageType: z.string().optional().describe('Filter by storage type'),
-    top: z.number().optional().default(100).describe('Max bins to analyze')
+    top: z.coerce.number().optional().default(100).describe('Max bins to analyze')
   },
   async (params) => {
     try {
@@ -122,7 +122,7 @@ server.tool(
     movementType:   z.string().describe('WM movement type e.g. 999'),
     material:       z.string().describe('Material number e.g. TG0001'),
     plant:          z.string().describe('Plant e.g. 1710'),
-    quantity:       z.number().describe('Quantity to move'),
+    quantity:       z.coerce.number().describe('Quantity to move'),
     unitOfMeasure:  z.string().optional().default('').describe('Unit of measure — leave empty to use material base UOM (recommended)'),
     sourceType:         z.string().optional().default('').describe('Source storage type e.g. 001'),
     sourceBin:          z.string().optional().default('').describe('Source bin e.g. 01-02-01'),
@@ -187,7 +187,7 @@ server.tool(
     storageType: z.string().optional().describe('Filter by source or destination storage type e.g. 999'),
     bin:         z.string().optional().describe('Filter by source or destination bin e.g. AUFNAHME'),
     material:    z.string().optional().describe('Filter by material number e.g. TG0001'),
-    top:         z.number().optional().default(50).describe('Max TO headers to return')
+    top:         z.coerce.number().optional().default(50).describe('Max TO headers to return')
   },
   async (params) => {
     try {
@@ -207,7 +207,7 @@ server.tool(
     warehouse:   z.string().describe('Warehouse number e.g. 102'),
     storageType: z.string().optional().describe('Storage type e.g. 001. Omit to see all types.'),
     bin:         z.string().optional().describe('Narrow to a specific bin within the type'),
-    top:         z.number().optional().default(100).describe('Max records to return')
+    top:         z.coerce.number().optional().default(100).describe('Max records to return')
   },
   async (params) => {
     try {
@@ -228,7 +228,7 @@ server.tool(
     status:      z.enum(['open', 'partial', 'to-created', 'completed']).optional().describe('TR status filter. Defaults to open + partial + to-created. Use to-created to see TRs where a TO exists but is not yet confirmed.'),
     material:    z.string().optional().describe('Filter by material number e.g. TG0001'),
     storageType: z.string().optional().describe('Filter by source or destination storage type'),
-    top:         z.number().optional().default(50).describe('Max records to return')
+    top:         z.coerce.number().optional().default(50).describe('Max records to return')
   },
   async (params) => {
     try {
@@ -249,7 +249,7 @@ server.tool(
     plant:           z.string().describe('Plant e.g. 1010'),
     storageLocation: z.string().optional().describe('Storage location (LGORT) linked to this warehouse e.g. 0002 — required for accurate results, otherwise MARD returns all plant stock'),
     material:        z.string().optional().describe('Narrow to a specific material'),
-    threshold:       z.number().optional().default(0).describe('Ignore variances smaller than this quantity')
+    threshold:       z.coerce.number().optional().default(0).describe('Ignore variances smaller than this quantity')
   },
   async (params) => {
     try {
@@ -268,8 +268,8 @@ server.tool(
   {
     warehouse:          z.string().describe('Warehouse number e.g. 102'),
     storageType:        z.string().optional().describe('Limit to a specific storage type e.g. 001'),
-    daysSinceLastCount: z.number().optional().default(180).describe('Flag bins not counted within this many days (default 180)'),
-    top:                z.number().optional().default(100).describe('Max bins to return')
+    daysSinceLastCount: z.coerce.number().optional().default(180).describe('Flag bins not counted within this many days (default 180)'),
+    top:                z.coerce.number().optional().default(100).describe('Max bins to return')
   },
   async (params) => {
     try {
@@ -289,8 +289,8 @@ server.tool(
     warehouse:        z.string().describe('Warehouse number e.g. 102'),
     storageType:      z.string().optional().describe('Narrow to a specific storage type'),
     material:         z.string().optional().describe('Narrow to a specific material'),
-    daysSinceLastMove: z.number().optional().default(90).describe('Flag stock not moved in this many days (default 90)'),
-    top:              z.number().optional().default(100).describe('Max quants to scan')
+    daysSinceLastMove: z.coerce.number().optional().default(90).describe('Flag stock not moved in this many days (default 90)'),
+    top:              z.coerce.number().optional().default(100).describe('Max quants to scan')
   },
   async (params) => {
     try {
@@ -345,8 +345,8 @@ server.tool(
   {
     warehouse:   z.string().describe('Warehouse number e.g. 102'),
     storageType: z.string().optional().describe('Limit to a specific storage type e.g. 003'),
-    threshold:   z.number().optional().default(3).describe('Flag bin+material combos with this many quants or more (default 3)'),
-    top:         z.number().optional().default(200).describe('Max stock records to scan')
+    threshold:   z.coerce.number().optional().default(3).describe('Flag bin+material combos with this many quants or more (default 3)'),
+    top:         z.coerce.number().optional().default(200).describe('Max stock records to scan')
   },
   async (params) => {
     try {
@@ -365,8 +365,8 @@ server.tool(
   {
     warehouse:   z.string().describe('Warehouse number e.g. 102'),
     storageType: z.string().optional().describe('Specific zone type to check e.g. 999. Defaults to 999 + 998.'),
-    minAgeDays:  z.number().optional().default(7).describe('Only show negatives older than this many days (default 7). Set to 0 to see all.'),
-    top:         z.number().optional().default(500).describe('Max stock records to scan')
+    minAgeDays:  z.coerce.number().optional().default(7).describe('Only show negatives older than this many days (default 7). Set to 0 to see all.'),
+    top:         z.coerce.number().optional().default(500).describe('Max stock records to scan')
   },
   async (params) => {
     try {
@@ -409,7 +409,7 @@ server.tool(
     createdBy:    z.string().optional().describe('Filter by the SAP user who created the TO e.g. NOMANH'),
     executedBy:   z.string().optional().describe('Filter by the SAP user who executed/confirmed the TO'),
     material:     z.string().optional().describe('Filter by material number e.g. TG0001'),
-    top:          z.number().optional().default(50).describe('Max number of TOs to return (default 50)')
+    top:          z.coerce.number().optional().default(50).describe('Max number of TOs to return (default 50)')
   },
   async (params) => {
     try {
@@ -447,10 +447,10 @@ server.tool(
     warehouse:       z.string().describe('Warehouse number e.g. 102'),
     storageType:     z.string().optional().default('P01').describe('Forward pick storage type to check (default P01)'),
     material:        z.string().optional().describe('Narrow to a specific material e.g. TG0001'),
-    minimumQuantity:     z.number().optional().default(0).describe('Flag bins at or below this level. Default 0 = empty/negative only. Overridden per bin when LAGP min qty (MNMNG) is configured.'),
-    targetQuantity:      z.number().optional().describe('Fill-to target — overrides bin master MaximumQuantity when set.'),
-    defaultReplenishQty: z.number().optional().default(50).describe('Fallback replenishment qty when bin master max qty (MXMNG) is 0 and no targetQuantity given. Default 50.'),
-    top:                 z.number().optional().default(50).describe('Max records to return')
+    minimumQuantity:     z.coerce.number().optional().default(0).describe('Flag bins at or below this level. Default 0 = empty/negative only. Overridden per bin when LAGP min qty (MNMNG) is configured.'),
+    targetQuantity:      z.coerce.number().optional().describe('Fill-to target — overrides bin master MaximumQuantity when set.'),
+    defaultReplenishQty: z.coerce.number().optional().default(50).describe('Fallback replenishment qty when bin master max qty (MXMNG) is 0 and no targetQuantity given. Default 50.'),
+    top:                 z.coerce.number().optional().default(50).describe('Max records to return')
   },
   async (params) => {
     try {
@@ -469,9 +469,9 @@ server.tool(
   {
     warehouse:       z.string().describe('Warehouse number e.g. 102'),
     interimTypes:    z.array(z.string()).optional().default(['999', '998', '902']).describe('Interim storage types to check — default [999, 998, 902]'),
-    minDaysStranded: z.number().optional().default(0).describe('Only return stock stranded for at least this many days. Default 0 = include same-day strandings.'),
+    minDaysStranded: z.coerce.number().optional().default(0).describe('Only return stock stranded for at least this many days. Default 0 = include same-day strandings.'),
     material:        z.string().optional().describe('Narrow to a specific material e.g. TG0001'),
-    top:             z.number().optional().default(100).describe('Max quants to scan (scans top * 3 internally to account for client-side filtering)')
+    top:             z.coerce.number().optional().default(100).describe('Max quants to scan (scans top * 3 internally to account for client-side filtering)')
   },
   async (params) => {
     try {
@@ -492,7 +492,7 @@ server.tool(
     shippingPoint:    z.string().optional().describe('Filter by shipping point e.g. 1000'),
     includeCompleted: z.boolean().optional().default(false).describe('Include deliveries where GI has already been posted (default false — open only)'),
     material:         z.string().optional().describe('Narrow to a specific material e.g. TG0001'),
-    top:              z.number().optional().default(50).describe('Max delivery items to fetch (default 50)')
+    top:              z.coerce.number().optional().default(50).describe('Max delivery items to fetch (default 50)')
   },
   async (params) => {
     try {
